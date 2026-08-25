@@ -14,8 +14,8 @@ import java.util.UUID
 /**
  * 应用启动后自动发送一批演示事件到 Kafka。
  *
- * 根据当前激活的 Spring Profile（scenario1/scenario2/scenario3）采用不同的发送策略，
- * 以配合各自监听器演示不同成因的 consumer group rebalance。
+ * 根据当前激活的 Spring Profile（scenario1/scenario2/scenario3/scenario4）采用不同的
+ * 发送策略，以配合各自监听器演示不同成因（或不触发）consumer group rebalance 的场景。
  */
 @Component
 class DemoEventProducer(
@@ -34,6 +34,7 @@ class DemoEventProducer(
             when (scenario) {
                 Scenario.SCENARIO2 -> sendScenario2Events()
                 Scenario.SCENARIO3 -> sendScenario3Events()
+                Scenario.SCENARIO4 -> sendScenario4Events()
                 else -> sendScenario1Events()
             }
         }.apply {
@@ -97,17 +98,42 @@ class DemoEventProducer(
     private fun send(event: DemoEvent, key: String) {
         kafkaTemplate.send(topic, key, event)
         log.info(
-            "已发送消息 id={} key={} slow={} retryTrigger={}",
-            event.id, key, event.slow, event.retryTrigger
+            "已发送消息 id={} key={} slow={} retryTrigger={} flaky={}",
+            event.id, key, event.slow, event.retryTrigger, event.flaky
         )
     }
 
-    private fun newEvent(index: Int, slow: Boolean, retryTrigger: Boolean = false): DemoEvent =
+    /**
+     * 场景四：3 条消息发到同一个 key（同一分区），其中 index=1 标记 flaky=true，
+     * 用于模拟"下游服务临时不可用"；其余消息为普通消息，用于验证该场景下
+     * 正常消息不受影响、能够快速处理。
+     */
+    private fun sendScenario4Events() {
+        log.info(
+            "[scenario4] 开始向单一分区发送 {} 条消息，其中 index={} 会模拟下游临时不可用",
+            SCENARIO4_MESSAGE_COUNT, SCENARIO4_FLAKY_INDEX
+        )
+        repeat(SCENARIO4_MESSAGE_COUNT) { index ->
+            val flaky = index == SCENARIO4_FLAKY_INDEX
+            val event = newEvent(index, slow = false, flaky = flaky)
+            send(event, SCENARIO2_FIXED_KEY)
+            Thread.sleep(SCENARIO1_SEND_INTERVAL_MS)
+        }
+        log.info("[scenario4] 全部演示消息发送完毕")
+    }
+
+    private fun newEvent(
+        index: Int,
+        slow: Boolean,
+        retryTrigger: Boolean = false,
+        flaky: Boolean = false
+    ): DemoEvent =
         DemoEvent(
             id = UUID.randomUUID().toString(),
             payload = "demo-event-$index",
             slow = slow,
             retryTrigger = retryTrigger,
+            flaky = flaky,
             createdAt = Instant.now().toString()
         )
 
@@ -116,11 +142,12 @@ class DemoEventProducer(
         return when {
             activeProfiles.contains("scenario2") -> Scenario.SCENARIO2
             activeProfiles.contains("scenario3") -> Scenario.SCENARIO3
+            activeProfiles.contains("scenario4") -> Scenario.SCENARIO4
             else -> Scenario.SCENARIO1
         }
     }
 
-    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3 }
+    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4 }
 
     companion object {
         private const val SCENARIO1_MESSAGE_COUNT = 12
@@ -132,5 +159,8 @@ class DemoEventProducer(
         private const val SCENARIO3_MESSAGE_COUNT = 12
         private const val SCENARIO3_SEND_INTERVAL_MS = 50L
         private val SCENARIO3_RETRY_TRIGGER_INDICES = setOf(0, 6)
+
+        private const val SCENARIO4_MESSAGE_COUNT = 3
+        private const val SCENARIO4_FLAKY_INDEX = 1
     }
 }

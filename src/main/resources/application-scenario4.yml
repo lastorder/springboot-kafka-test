@@ -1,0 +1,19 @@
+# 场景四：模拟下游服务临时不可用，通过指数退避重试，最终在下游恢复后成功处理，
+# 全程不触发 consumer group rebalance。
+#
+# 本地实测使用"时间压缩版"退避参数（见 Scenario4ErrorHandlerConfig，秒级），
+# 生产环境应使用的真实参数（分钟级，总预算约 15 分钟）见
+# docs/rebalance-analysis.md 场景四章节的"生产环境最优配置"说明。
+#
+# 关键原理：DefaultErrorHandler 在每次重试之间都会重新调用 poll()，只要"单次"退避
+# 等待时间的上限（maxInterval）明显小于 max.poll.interval.ms，无论总共重试多少次、
+# 总耗时多长，都不会触发 rebalance。本场景 maxInterval=3000ms，此处
+# max.poll.interval.ms=6000ms，预留 2 倍安全余量。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 6000
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000

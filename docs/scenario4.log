@@ -1,0 +1,537 @@
+> Task :checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :compileKotlin UP-TO-DATE
+> Task :compileJava NO-SOURCE
+> Task :processResources UP-TO-DATE
+> Task :classes UP-TO-DATE
+> Task :resolveMainClassName
+
+> Task :bootRun
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v4.0.4)
+
+17:38:08.459 [main] INFO  c.e.kafkarebalance.KafkaRebalanceDemoApplicationKt - Starting KafkaRebalanceDemoApplicationKt using Java 25.0.2 with PID 32618 (/Users/yudong/Workspace/learn/springboot-kafka-test/build/classes/kotlin/main started by yudong in /Users/yudong/Workspace/learn/springboot-kafka-test)
+17:38:08.460 [main] DEBUG c.e.kafkarebalance.KafkaRebalanceDemoApplicationKt - Running with Spring Boot v4.0.4, Spring v7.0.6
+17:38:08.460 [main] INFO  c.e.kafkarebalance.KafkaRebalanceDemoApplicationKt - The following 1 profile is active: "scenario4"
+17:38:08.773 [main] INFO  c.e.k.config.Scenario4ErrorHandlerConfig - 已注册指数退避 ErrorHandler：initialInterval=500ms multiplier=2.0 maxInterval=3000ms maxRetries=8
+17:38:08.808 [main] INFO  org.apache.kafka.common.config.AbstractConfig - AdminClientConfig values: 
+	bootstrap.controllers = []
+	bootstrap.servers = [localhost:9092]
+	client.dns.lookup = use_all_dns_ips
+	client.id = kafka-rebalance-demo-admin-0
+	connections.max.idle.ms = 300000
+	default.api.timeout.ms = 60000
+	enable.metrics.push = false
+	metadata.max.age.ms = 300000
+	metadata.recovery.rebootstrap.trigger.ms = 300000
+	metadata.recovery.strategy = rebootstrap
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.assertion.algorithm = RS256
+	sasl.oauthbearer.assertion.claim.aud = null
+	sasl.oauthbearer.assertion.claim.exp.seconds = 300
+	sasl.oauthbearer.assertion.claim.iss = null
+	sasl.oauthbearer.assertion.claim.jti.include = false
+	sasl.oauthbearer.assertion.claim.nbf.seconds = 60
+	sasl.oauthbearer.assertion.claim.sub = null
+	sasl.oauthbearer.assertion.file = null
+	sasl.oauthbearer.assertion.private.key.file = null
+	sasl.oauthbearer.assertion.private.key.passphrase = null
+	sasl.oauthbearer.assertion.template.file = null
+	sasl.oauthbearer.client.credentials.client.id = null
+	sasl.oauthbearer.client.credentials.client.secret = null
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.jwt.retriever.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever
+	sasl.oauthbearer.jwt.validator.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator
+	sasl.oauthbearer.scope = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+
+17:38:08.858 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka version: 4.1.2
+17:38:08.858 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: c82fd9b934b4c1e6
+17:38:08.858 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1787650688858
+17:38:09.001 [main] INFO  org.apache.kafka.common.metrics.Metrics - Metrics scheduler closed
+17:38:09.001 [main] INFO  org.apache.kafka.common.metrics.Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+17:38:09.001 [main] INFO  org.apache.kafka.common.metrics.Metrics - Metrics reporters closed
+17:38:09.002 [kafka-admin-client-thread | kafka-rebalance-demo-admin-0] INFO  org.apache.kafka.common.utils.AppInfoParser - App info kafka.admin.client for kafka-rebalance-demo-admin-0 unregistered
+17:38:09.004 [kafka-admin-client-thread | kafka-rebalance-demo-admin-0] INFO  org.apache.kafka.common.metrics.Metrics - Metrics scheduler closed
+17:38:09.004 [kafka-admin-client-thread | kafka-rebalance-demo-admin-0] INFO  org.apache.kafka.common.metrics.Metrics - Closing reporter org.apache.kafka.common.metrics.JmxReporter
+17:38:09.004 [kafka-admin-client-thread | kafka-rebalance-demo-admin-0] INFO  org.apache.kafka.common.metrics.Metrics - Metrics reporters closed
+17:38:09.014 [main] INFO  org.apache.kafka.common.config.AbstractConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [localhost:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-slow-consumer-group-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	enable.metrics.push = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = slow-consumer-group
+	group.instance.id = null
+	group.protocol = classic
+	group.remote.assignor = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 6000
+	max.poll.records = 1
+	metadata.max.age.ms = 300000
+	metadata.recovery.rebootstrap.trigger.ms = 300000
+	metadata.recovery.strategy = rebootstrap
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.assertion.algorithm = RS256
+	sasl.oauthbearer.assertion.claim.aud = null
+	sasl.oauthbearer.assertion.claim.exp.seconds = 300
+	sasl.oauthbearer.assertion.claim.iss = null
+	sasl.oauthbearer.assertion.claim.jti.include = false
+	sasl.oauthbearer.assertion.claim.nbf.seconds = 60
+	sasl.oauthbearer.assertion.claim.sub = null
+	sasl.oauthbearer.assertion.file = null
+	sasl.oauthbearer.assertion.private.key.file = null
+	sasl.oauthbearer.assertion.private.key.passphrase = null
+	sasl.oauthbearer.assertion.template.file = null
+	sasl.oauthbearer.client.credentials.client.id = null
+	sasl.oauthbearer.client.credentials.client.secret = null
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.jwt.retriever.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever
+	sasl.oauthbearer.jwt.validator.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator
+	sasl.oauthbearer.scope = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 10000
+	share.acknowledgement.mode = implicit
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.springframework.kafka.support.serializer.JsonDeserializer
+
+17:38:09.024 [main] INFO  o.a.k.c.telemetry.internals.KafkaMetricsCollector - initializing Kafka metrics collector
+17:38:09.059 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka version: 4.1.2
+17:38:09.059 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: c82fd9b934b4c1e6
+17:38:09.059 [main] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1787650689059
+17:38:09.060 [main] INFO  o.a.k.c.consumer.internals.ClassicKafkaConsumer - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Subscribed to topic(s): slow-events
+17:38:09.063 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending FindCoordinator request to broker localhost:9092 (id: -1 rack: null isFenced: false)
+17:38:09.063 [main] INFO  c.e.kafkarebalance.KafkaRebalanceDemoApplicationKt - Started KafkaRebalanceDemoApplicationKt in 0.737 seconds (process running for 0.835)
+17:38:09.070 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Cluster ID: MkU3OEVBNTcwNTJENDM2Qk
+17:38:09.072 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received FindCoordinator response ClientResponse(receivedTimeMs=1787650689070, latencyMs=7, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=FIND_COORDINATOR, apiVersion=6, clientId=consumer-slow-consumer-group-1, correlationId=0, headerVersion=2), responseBody=FindCoordinatorResponseData(throttleTimeMs=0, errorCode=0, errorMessage='', nodeId=0, host='', port=0, coordinators=[Coordinator(key='slow-consumer-group', nodeId=-1, host='', port=-1, errorCode=15, errorMessage='')]))
+17:38:09.072 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Group coordinator lookup failed: 
+17:38:09.072 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Coordinator discovery failed, refreshing metadata
+org.apache.kafka.common.errors.CoordinatorNotAvailableException: The coordinator is not available.
+17:38:09.189 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending FindCoordinator request to broker localhost:9092 (id: 1 rack: null isFenced: false)
+17:38:09.192 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received FindCoordinator response ClientResponse(receivedTimeMs=1787650689192, latencyMs=3, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=FIND_COORDINATOR, apiVersion=6, clientId=consumer-slow-consumer-group-1, correlationId=6, headerVersion=2), responseBody=FindCoordinatorResponseData(throttleTimeMs=0, errorCode=0, errorMessage='', nodeId=0, host='', port=0, coordinators=[Coordinator(key='slow-consumer-group', nodeId=1, host='localhost', port=9092, errorCode=0, errorMessage='')]))
+17:38:09.192 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.193 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Executing onJoinPrepare with generation -1 and memberId 
+17:38:09.193 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Heartbeat thread started
+17:38:09.193 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] (Re-)joining group
+17:38:09.193 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Joining group with current subscription: [slow-events]
+17:38:09.196 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending JoinGroup (JoinGroupRequestData(groupId='slow-consumer-group', sessionTimeoutMs=10000, rebalanceTimeoutMs=6000, memberId='', groupInstanceId=null, protocolType='consumer', protocols=[JoinGroupRequestProtocol(name='range', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1]), JoinGroupRequestProtocol(name='cooperative-sticky', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, 0, 0, 0, 4, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1])], reason='')) to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.204 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Group coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false) is unavailable or invalid due to cause: error response NOT_COORDINATOR. isDisconnected: false. Rediscovery will be attempted.
+17:38:09.205 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.205 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] JoinGroup failed: This is not the correct coordinator. Marking coordinator unknown. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+17:38:09.205 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending FindCoordinator request to broker localhost:9092 (id: 1 rack: null isFenced: false)
+17:38:09.205 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  org.apache.kafka.clients.NetworkClient - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Client requested disconnect from node 2147483646
+17:38:09.207 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received FindCoordinator response ClientResponse(receivedTimeMs=1787650689207, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=FIND_COORDINATOR, apiVersion=6, clientId=consumer-slow-consumer-group-1, correlationId=9, headerVersion=2), responseBody=FindCoordinatorResponseData(throttleTimeMs=0, errorCode=0, errorMessage='', nodeId=0, host='', port=0, coordinators=[Coordinator(key='slow-consumer-group', nodeId=1, host='localhost', port=9092, errorCode=0, errorMessage='')]))
+17:38:09.207 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.208 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Group coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false) is unavailable or invalid due to cause: coordinator unavailable. isDisconnected: false. Rediscovery will be attempted.
+17:38:09.208 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Requesting disconnect from last known coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.311 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending FindCoordinator request to broker localhost:9092 (id: 1 rack: null isFenced: false)
+17:38:09.313 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received FindCoordinator response ClientResponse(receivedTimeMs=1787650689313, latencyMs=2, disconnected=false, timedOut=false, requestHeader=RequestHeader(apiKey=FIND_COORDINATOR, apiVersion=6, clientId=consumer-slow-consumer-group-1, correlationId=10, headerVersion=2), responseBody=FindCoordinatorResponseData(throttleTimeMs=0, errorCode=0, errorMessage='', nodeId=0, host='', port=0, coordinators=[Coordinator(key='slow-consumer-group', nodeId=1, host='localhost', port=9092, errorCode=0, errorMessage='')]))
+17:38:09.313 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Discovered group coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.313 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Request joining group due to: rebalance failed due to 'This is not the correct coordinator.' (NotCoordinatorException)
+17:38:09.314 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] (Re-)joining group
+17:38:09.314 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Joining group with current subscription: [slow-events]
+17:38:09.314 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending JoinGroup (JoinGroupRequestData(groupId='slow-consumer-group', sessionTimeoutMs=10000, rebalanceTimeoutMs=6000, memberId='', groupInstanceId=null, protocolType='consumer', protocols=[JoinGroupRequestProtocol(name='range', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1]), JoinGroupRequestProtocol(name='cooperative-sticky', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, 0, 0, 0, 4, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1])], reason='rebalance failed due to NotCoordinatorException')) to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.317 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] JoinGroup failed due to non-fatal error: MEMBER_ID_REQUIRED. Will set the member id as consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff and then rejoin. Sent generation was Generation{generationId=-1, memberId='', protocol='null'}
+17:38:09.317 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Request joining group due to: need to re-join with the given member-id: consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff
+17:38:09.317 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] (Re-)joining group
+17:38:09.317 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Joining group with current subscription: [slow-events]
+17:38:09.317 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending JoinGroup (JoinGroupRequestData(groupId='slow-consumer-group', sessionTimeoutMs=10000, rebalanceTimeoutMs=6000, memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', groupInstanceId=null, protocolType='consumer', protocols=[JoinGroupRequestProtocol(name='range', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1]), JoinGroupRequestProtocol(name='cooperative-sticky', metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, 0, 0, 0, 4, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1])], reason='need to re-join with the given member-id: consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff')) to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:09.323 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful JoinGroup response: JoinGroupResponseData(throttleTimeMs=0, errorCode=0, generationId=1, protocolType='consumer', protocolName='range', leader='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', skipAssignment=false, memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', members=[JoinGroupResponseMember(memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', groupInstanceId=null, metadata=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, -1, -1, -1, -1, 0, 0, 0, 0, -1, -1, -1, -1, -1, -1])])
+17:38:09.323 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Enabling heartbeat thread
+17:38:09.323 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Successfully joined group with generation Generation{generationId=1, memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', protocol='range'}
+17:38:09.324 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Performing assignment using strategy range with subscriptions {consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff=Subscription(topics=[slow-events], ownedPartitions=[], groupInstanceId=null, generationId=-1, rackId=null)}
+17:38:09.325 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Finished assignment for group at generation 1: {consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff=Assignment(partitions=[slow-events-0, slow-events-1, slow-events-2])}
+17:38:09.326 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending leader SyncGroup to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false): SyncGroupRequestData(groupId='slow-consumer-group', generationId=1, memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', groupInstanceId=null, protocolType='consumer', protocolName='range', assignments=[SyncGroupRequestAssignment(memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', assignment=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, -1, -1, -1, -1])])
+17:38:09.329 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful SyncGroup response: SyncGroupResponseData(throttleTimeMs=0, errorCode=0, protocolType='consumer', protocolName='range', assignment=[0, 3, 0, 0, 0, 1, 0, 11, 115, 108, 111, 119, 45, 101, 118, 101, 110, 116, 115, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, -1, -1, -1, -1])
+17:38:09.330 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Successfully synced group in generation Generation{generationId=1, memberId='consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff', protocol='range'}
+17:38:09.330 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Executing onJoinComplete with generation 1 and memberId consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff
+17:38:09.330 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Notifying assignor about the new Assignment(partitions=[slow-events-0, slow-events-1, slow-events-2])
+17:38:09.330 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.c.i.ConsumerRebalanceListenerInvoker - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Adding newly assigned partitions: [slow-events-0, slow-events-1, slow-events-2]
+17:38:09.331 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Fetching committed offsets for partitions: [slow-events-2, slow-events-1, slow-events-0]
+17:38:09.334 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Found no committed offset for partition slow-events-2
+17:38:09.334 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Found no committed offset for partition slow-events-1
+17:38:09.334 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Found no committed offset for partition slow-events-0
+17:38:09.339 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Resetting offset for partition slow-events-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null isFenced: false)], epoch=0}}.
+17:38:09.339 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Resetting offset for partition slow-events-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null isFenced: false)], epoch=0}}.
+17:38:09.339 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Resetting offset for partition slow-events-0 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[localhost:9092 (id: 1 rack: null isFenced: false)], epoch=0}}.
+17:38:09.339 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.s.kafka.listener.KafkaMessageListenerContainer - slow-consumer-group: partitions assigned: [slow-events-0, slow-events-1, slow-events-2]
+17:38:12.071 [demo-event-producer] INFO  c.e.kafkarebalance.producer.DemoEventProducer - [scenario4] 开始向单一分区发送 3 条消息，其中 index=1 会模拟下游临时不可用
+17:38:12.088 [demo-event-producer] INFO  org.apache.kafka.common.config.AbstractConfig - ProducerConfig values: 
+	acks = -1
+	batch.size = 16384
+	bootstrap.servers = [localhost:9092]
+	buffer.memory = 33554432
+	client.dns.lookup = use_all_dns_ips
+	client.id = kafka-rebalance-demo-producer-1
+	compression.gzip.level = -1
+	compression.lz4.level = 9
+	compression.type = none
+	compression.zstd.level = 3
+	connections.max.idle.ms = 540000
+	delivery.timeout.ms = 120000
+	enable.idempotence = true
+	enable.metrics.push = true
+	interceptor.classes = []
+	key.serializer = class org.apache.kafka.common.serialization.StringSerializer
+	linger.ms = 5
+	max.block.ms = 60000
+	max.in.flight.requests.per.connection = 5
+	max.request.size = 1048576
+	metadata.max.age.ms = 300000
+	metadata.max.idle.ms = 300000
+	metadata.recovery.rebootstrap.trigger.ms = 300000
+	metadata.recovery.strategy = rebootstrap
+	metric.reporters = [org.apache.kafka.common.metrics.JmxReporter]
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partitioner.adaptive.partitioning.enable = true
+	partitioner.availability.timeout.ms = 0
+	partitioner.class = null
+	partitioner.ignore.keys = false
+	receive.buffer.bytes = 32768
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retries = 2147483647
+	retry.backoff.max.ms = 1000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.assertion.algorithm = RS256
+	sasl.oauthbearer.assertion.claim.aud = null
+	sasl.oauthbearer.assertion.claim.exp.seconds = 300
+	sasl.oauthbearer.assertion.claim.iss = null
+	sasl.oauthbearer.assertion.claim.jti.include = false
+	sasl.oauthbearer.assertion.claim.nbf.seconds = 60
+	sasl.oauthbearer.assertion.claim.sub = null
+	sasl.oauthbearer.assertion.file = null
+	sasl.oauthbearer.assertion.private.key.file = null
+	sasl.oauthbearer.assertion.private.key.passphrase = null
+	sasl.oauthbearer.assertion.template.file = null
+	sasl.oauthbearer.client.credentials.client.id = null
+	sasl.oauthbearer.client.credentials.client.secret = null
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.header.urlencode = false
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.jwt.retriever.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever
+	sasl.oauthbearer.jwt.validator.class = class org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator
+	sasl.oauthbearer.scope = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	transaction.timeout.ms = 60000
+	transaction.two.phase.commit.enable = false
+	transactional.id = null
+	value.serializer = class org.springframework.kafka.support.serializer.JsonSerializer
+
+17:38:12.089 [demo-event-producer] INFO  o.a.k.c.telemetry.internals.KafkaMetricsCollector - initializing Kafka metrics collector
+17:38:12.103 [demo-event-producer] INFO  org.apache.kafka.clients.producer.KafkaProducer - [Producer clientId=kafka-rebalance-demo-producer-1] Instantiated an idempotent producer.
+17:38:12.111 [demo-event-producer] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka version: 4.1.2
+17:38:12.112 [demo-event-producer] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: c82fd9b934b4c1e6
+17:38:12.112 [demo-event-producer] INFO  org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1787650692111
+17:38:12.118 [kafka-producer-network-thread | kafka-rebalance-demo-producer-1] INFO  org.apache.kafka.clients.Metadata - [Producer clientId=kafka-rebalance-demo-producer-1] Cluster ID: MkU3OEVBNTcwNTJENDM2Qk
+17:38:12.136 [demo-event-producer] INFO  c.e.kafkarebalance.producer.DemoEventProducer - 已发送消息 id=c0d56dd5-ffd6-46b1-bc5b-bacfc8da0e05 key=0 slow=false retryTrigger=false flaky=false
+17:38:12.233 [kafka-producer-network-thread | kafka-rebalance-demo-producer-1] INFO  o.a.k.c.producer.internals.TransactionManager - [Producer clientId=kafka-rebalance-demo-producer-1] ProducerId set to 0 with epoch 0
+17:38:12.267 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:12.269 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=c0d56dd5-ffd6-46b1-bc5b-bacfc8da0e05, payload=demo-event-0, slow=false, retryTrigger=false, flaky=false, createdAt=2026-08-25T09:38:12.073147Z), headers={kafka_offset=0, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692118, kafka_acknowledgment=Acknowledgment for slow-events-2@0, kafka_groupId=slow-consumer-group}]]
+17:38:12.270 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=c0d56dd5-ffd6-46b1-bc5b-bacfc8da0e05 partition=2（非 flaky，正常处理）
+17:38:12.341 [demo-event-producer] INFO  c.e.kafkarebalance.producer.DemoEventProducer - 已发送消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe key=0 slow=false retryTrigger=false flaky=true
+17:38:12.356 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:12.376 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Committing: {slow-events-2=OffsetAndMetadata{offset=1, leaderEpoch=null, metadata=''}}
+17:38:12.378 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:12.392 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Committed offset 1 for partition slow-events-2
+17:38:12.392 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 消息处理完成并已提交 offset id=c0d56dd5-ffd6-46b1-bc5b-bacfc8da0e05
+17:38:12.396 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:12.396 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe, payload=demo-event-1, slow=false, retryTrigger=false, flaky=true, createdAt=2026-08-25T09:38:12.340768Z), headers={kafka_offset=1, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692340, kafka_acknowledgment=Acknowledgment for slow-events-2@1, kafka_groupId=slow-consumer-group}]]
+17:38:12.396 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe partition=2 这是第 1 次尝试（模拟下游服务临时不可用）
+17:38:12.396 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] ERROR c.e.k.listener.FlakyDownstreamEventListener - 模拟下游仍不可用：id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe 第 1 次尝试失败，将触发指数退避重试
+17:38:12.398 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] WARN  c.e.k.config.Scenario4ErrorHandlerConfig - 消息 offset=1 partition=2 第 1 次投递失败，将进行指数退避重试：Listener method 'public void com.example.kafkarebalance.listener.FlakyDownstreamEventListener.onMessage(com.example.kafkarebalance.model.DemoEvent,int,org.springframework.kafka.support.Acknowledgment)' threw exception
+17:38:12.547 [demo-event-producer] INFO  c.e.kafkarebalance.producer.DemoEventProducer - 已发送消息 id=25aa3f67-46ca-4fc4-8f77-af056bae8bb9 key=0 slow=false retryTrigger=false flaky=false
+17:38:12.753 [demo-event-producer] INFO  c.e.kafkarebalance.producer.DemoEventProducer - [scenario4] 全部演示消息发送完毕
+17:38:12.906 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ClassicKafkaConsumer - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Seeking to offset 1 for partition slow-events-2
+17:38:12.906 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.s.kafka.listener.KafkaMessageListenerContainer - Record in retry and not yet recovered
+17:38:12.909 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:12.909 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe, payload=demo-event-1, slow=false, retryTrigger=false, flaky=true, createdAt=2026-08-25T09:38:12.340768Z), headers={kafka_offset=1, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692340, kafka_acknowledgment=Acknowledgment for slow-events-2@1, kafka_groupId=slow-consumer-group}]]
+17:38:12.909 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe partition=2 这是第 2 次尝试（模拟下游服务临时不可用）
+17:38:12.909 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] ERROR c.e.k.listener.FlakyDownstreamEventListener - 模拟下游仍不可用：id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe 第 2 次尝试失败，将触发指数退避重试
+17:38:12.909 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] WARN  c.e.k.config.Scenario4ErrorHandlerConfig - 消息 offset=1 partition=2 第 2 次投递失败，将进行指数退避重试：Listener method 'public void com.example.kafkarebalance.listener.FlakyDownstreamEventListener.onMessage(com.example.kafkarebalance.model.DemoEvent,int,org.springframework.kafka.support.Acknowledgment)' threw exception
+17:38:13.944 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ClassicKafkaConsumer - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Seeking to offset 1 for partition slow-events-2
+17:38:13.945 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.s.kafka.listener.KafkaMessageListenerContainer - Record in retry and not yet recovered
+17:38:13.954 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:13.954 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe, payload=demo-event-1, slow=false, retryTrigger=false, flaky=true, createdAt=2026-08-25T09:38:12.340768Z), headers={kafka_offset=1, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692340, kafka_acknowledgment=Acknowledgment for slow-events-2@1, kafka_groupId=slow-consumer-group}]]
+17:38:13.955 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe partition=2 这是第 3 次尝试（模拟下游服务临时不可用）
+17:38:13.955 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] ERROR c.e.k.listener.FlakyDownstreamEventListener - 模拟下游仍不可用：id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe 第 3 次尝试失败，将触发指数退避重试
+17:38:13.955 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] WARN  c.e.k.config.Scenario4ErrorHandlerConfig - 消息 offset=1 partition=2 第 3 次投递失败，将进行指数退避重试：Listener method 'public void com.example.kafkarebalance.listener.FlakyDownstreamEventListener.onMessage(com.example.kafkarebalance.model.DemoEvent,int,org.springframework.kafka.support.Acknowledgment)' threw exception
+17:38:15.371 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:15.479 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:16.014 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ClassicKafkaConsumer - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Seeking to offset 1 for partition slow-events-2
+17:38:16.014 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.s.kafka.listener.KafkaMessageListenerContainer - Record in retry and not yet recovered
+17:38:16.024 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:16.025 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe, payload=demo-event-1, slow=false, retryTrigger=false, flaky=true, createdAt=2026-08-25T09:38:12.340768Z), headers={kafka_offset=1, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692340, kafka_acknowledgment=Acknowledgment for slow-events-2@1, kafka_groupId=slow-consumer-group}]]
+17:38:16.025 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe partition=2 这是第 4 次尝试（模拟下游服务临时不可用）
+17:38:16.025 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] ERROR c.e.k.listener.FlakyDownstreamEventListener - 模拟下游仍不可用：id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe 第 4 次尝试失败，将触发指数退避重试
+17:38:16.026 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] WARN  c.e.k.config.Scenario4ErrorHandlerConfig - 消息 offset=1 partition=2 第 4 次投递失败，将进行指数退避重试：Listener method 'public void com.example.kafkarebalance.listener.FlakyDownstreamEventListener.onMessage(com.example.kafkarebalance.model.DemoEvent,int,org.springframework.kafka.support.Acknowledgment)' threw exception
+17:38:18.467 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:18.572 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:19.127 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.a.k.c.consumer.internals.ClassicKafkaConsumer - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Seeking to offset 1 for partition slow-events-2
+17:38:19.128 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  o.s.kafka.listener.KafkaMessageListenerContainer - Record in retry and not yet recovered
+17:38:19.139 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:19.139 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe, payload=demo-event-1, slow=false, retryTrigger=false, flaky=true, createdAt=2026-08-25T09:38:12.340768Z), headers={kafka_offset=1, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692340, kafka_acknowledgment=Acknowledgment for slow-events-2@1, kafka_groupId=slow-consumer-group}]]
+17:38:19.140 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe partition=2 这是第 5 次尝试（模拟下游服务临时不可用）
+17:38:19.140 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 模拟下游已恢复：id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe 第 5 次尝试将正常处理
+17:38:19.245 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Committing: {slow-events-2=OffsetAndMetadata{offset=2, leaderEpoch=null, metadata=''}}
+17:38:19.255 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Committed offset 2 for partition slow-events-2
+17:38:19.255 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 消息处理完成并已提交 offset id=3cc8708b-de6e-4bf9-bc13-f15161c5f2fe
+17:38:19.256 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 1 records
+17:38:19.256 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.k.l.a.RecordMessagingMessageListenerAdapter - Processing [GenericMessage [payload=DemoEvent(id=25aa3f67-46ca-4fc4-8f77-af056bae8bb9, payload=demo-event-2, slow=false, retryTrigger=false, flaky=false, createdAt=2026-08-25T09:38:12.546927Z), headers={kafka_offset=2, kafka_consumer=org.springframework.kafka.core.DefaultKafkaConsumerFactory$ExtendedKafkaConsumer@6508d5, kafka_timestampType=CREATE_TIME, kafka_receivedPartitionId=2, kafka_receivedMessageKey=0, kafka_receivedTopic=slow-events, kafka_receivedTimestamp=1787650692547, kafka_acknowledgment=Acknowledgment for slow-events-2@2, kafka_groupId=slow-consumer-group}]]
+17:38:19.256 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=25aa3f67-46ca-4fc4-8f77-af056bae8bb9 partition=2（非 flaky，正常处理）
+17:38:19.362 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Committing: {slow-events-2=OffsetAndMetadata{offset=3, leaderEpoch=null, metadata=''}}
+17:38:19.372 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Committed offset 3 for partition slow-events-2
+17:38:19.372 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] INFO  c.e.k.listener.FlakyDownstreamEventListener - 消息处理完成并已提交 offset id=25aa3f67-46ca-4fc4-8f77-af056bae8bb9
+17:38:21.469 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:21.474 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:24.375 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:24.471 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:24.476 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:27.472 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:27.479 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:29.377 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:30.474 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:30.481 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:33.475 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:33.477 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:34.379 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:36.477 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:36.485 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:39.381 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:39.478 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:39.483 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:42.479 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:42.485 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:44.383 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:45.481 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:45.487 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:48.484 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:48.490 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:49.385 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:51.483 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:51.489 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:54.387 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:38:54.485 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:54.490 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:57.485 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:38:57.491 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:38:59.389 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:00.486 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:00.493 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:03.488 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:03.494 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:04.389 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:06.487 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:06.493 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:09.390 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:09.489 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:09.495 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:12.490 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:12.494 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:14.393 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:15.491 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:15.497 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:18.493 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:18.504 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:19.394 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:21.494 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:21.501 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response
+17:39:24.396 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.s.kafka.listener.KafkaMessageListenerContainer - Received: 0 records
+17:39:24.495 [kafka-coordinator-heartbeat-thread | slow-consumer-group] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Sending Heartbeat request with generation 1 and member id consumer-slow-consumer-group-1-32b9ff8f-81f7-4f00-9d14-8069712c01ff to coordinator localhost:9092 (id: 2147483646 rack: null isFenced: false)
+17:39:24.502 [org.springframework.kafka.KafkaListenerEndpointContainer#0-0-C-1] DEBUG o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-slow-consumer-group-1, groupId=slow-consumer-group] Received successful Heartbeat response

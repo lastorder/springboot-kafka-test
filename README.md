@@ -19,34 +19,38 @@
 src/main/kotlin/com/example/kafkarebalance/
 ├── KafkaRebalanceDemoApplication.kt        # 启动类
 ├── config/
-│   ├── KafkaTopicConfig.kt                 # 声明 3 分区的 slow-events topic（三场景通用）
-│   └── Scenario3ErrorHandlerConfig.kt      # 场景三：阻塞式重试 ErrorHandler（@Profile("scenario3")）
-├── model/DemoEvent.kt                      # 事件数据模型（三场景通用）
+│   ├── KafkaTopicConfig.kt                 # 声明 3 分区的 slow-events topic（四场景通用）
+│   ├── Scenario3ErrorHandlerConfig.kt      # 场景三：固定间隔阻塞式重试 ErrorHandler（@Profile("scenario3")）
+│   └── Scenario4ErrorHandlerConfig.kt      # 场景四：指数退避重试 ErrorHandler（@Profile("scenario4")）
+├── model/DemoEvent.kt                      # 事件数据模型（四场景通用）
 ├── producer/DemoEventProducer.kt           # 根据激活的 profile 采用不同发送策略
 └── listener/
     ├── SlowEventListener.kt                # 场景一：单条处理过慢（@Profile("scenario1")）
     ├── BatchSlowEventListener.kt           # 场景二：批量累计耗时过长（@Profile("scenario2")）
     ├── RetryProneEventListener.kt          # 场景三：阻塞式重试导致超时（@Profile("scenario3")）
-    └── TransientProcessingException.kt     # 场景三使用的可重试异常
+    ├── FlakyDownstreamEventListener.kt     # 场景四：下游临时不可用，指数退避最终成功（@Profile("scenario4")）
+    └── TransientProcessingException.kt     # 场景三、四共用的可重试异常
 src/main/resources/
 ├── application.yml                         # 公共配置（topic、序列化、默认 profile=scenario1）
 ├── application-scenario1.yml               # 场景一专属 Kafka 消费者配置
 ├── application-scenario2.yml               # 场景二专属 Kafka 消费者配置
 ├── application-scenario3.yml               # 场景三专属 Kafka 消费者配置
+├── application-scenario4.yml               # 场景四专属 Kafka 消费者配置
 └── logback-spring.xml                      # 日志配置，重点开启 rebalance 相关 logger
 ```
 
-## 三种 Rebalance 演示场景
+## 四种 Rebalance 演示场景
 
-本项目通过 Spring Profile（`scenario1` / `scenario2` / `scenario3`）切换三套独立的
-消费者配置 + 监听器实现，分别演示三种导致 consumer group rebalance 的常见成因。
-默认（不指定 profile）激活 `scenario1`。
+本项目通过 Spring Profile（`scenario1` / `scenario2` / `scenario3` / `scenario4`）切换四套
+独立的消费者配置 + 监听器实现，前三种演示导致 consumer group rebalance 的常见成因，
+第四种演示如何通过合理配置**避免**触发 rebalance。默认（不指定 profile）激活 `scenario1`。
 
 | 场景 | max.poll.records | max.poll.interval.ms | 触发机制 | 启动命令 |
 |------|-------------------|------------------------|----------|----------|
 | 场景一 | 1  | 6000 | 单条消息处理耗时（10s）直接超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario1'` |
 | 场景二 | 10 | 6000 | 单条不慢（800ms），但批量数量大，10 条累计 8000ms 超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario2'` |
 | 场景三 | 10 | 8000 | 整体配置合理（10 条累计仅 2000ms），但阻塞式重试的**单次**等待时间超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario3'` |
+| 场景四 | 1 | 6000（本地压缩版） | 下游临时不可用，指数退避重试（单次等待始终小于阈值），最终成功且**不触发** rebalance | `./gradlew bootRun --args='--spring.profiles.active=scenario4'` |
 
 ### 场景一：单条消息处理过慢（`SlowEventListener`）
 
@@ -129,11 +133,50 @@ rebalance——与总共重试了几次无关。详见 [`docs/rebalance-analysis
 `DemoEventProducer` 在该场景下发送 12 条消息到同一分区，其中 index=0 和 index=6 两条消息
 标记 `retryTrigger=true`，用于模拟批次中出现"瞬时失败"的情况。
 
-## 三场景实测日志与风险分析
+### 场景四：下游临时不可用，指数退避最终成功（`FlakyDownstreamEventListener`）
 
-`docs/` 目录下保存了三个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+这是本项目唯一一个**不触发 rebalance** 的场景，用于演示"下游服务下午临时不可用，
+通过指数退避重试，最多等待 15 分钟，期间尝试多次重试，最终成功处理"的正确配置方式。
 
-- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log)：三次真实运行的完整日志备份
+`application-scenario4.yml` 关键配置（本地实测用的时间压缩版）：
+
+```yaml
+spring.kafka.consumer.properties:
+  max.poll.interval.ms: 6000
+  max.poll.records: 1
+```
+
+`Scenario4ErrorHandlerConfig` 注册了一个使用 `ExponentialBackOffWithMaxRetries` 的
+`DefaultErrorHandler`：`initialInterval=500ms`，`multiplier=2.0`，`maxInterval=3000ms`，
+`maxRetries=8`（各次等待依次为 500/1000/2000/3000/3000/3000/3000/3000ms，
+累计约 18.5s，对应生产环境"最多等待 15 分钟"的压缩版）。
+
+**关键原理**（与场景三互为印证）：`DefaultErrorHandler` 在每次重试之间都会重新调用
+`KafkaConsumer#poll()`，重置"距上次成功 poll 的时间"计时器。因此只要**单次**退避
+等待的上限（`maxInterval`）始终小于 `max.poll.interval.ms`，无论总共重试多少次、
+总耗时多长，都**不会**触发 rebalance——这正是场景三"单次超标即触发"结论的正面应用。
+
+`FlakyDownstreamEventListener` 用 `flaky=true` 标记模拟"下游临时不可用"的消息：
+前 4 次尝试都会抛出可重试异常，第 5 次尝试起视为"下游已恢复"，正常处理并提交 offset。
+
+**生产环境最优配置**（真实 15 分钟预算，而非本地压缩版）：
+
+| 参数 | 建议值 |
+|---|---|
+| `initialInterval` | 5,000 ms |
+| `multiplier` | 2.0 |
+| `maxInterval` | 60,000 ms |
+| `maxRetries` | 18（对应总预算约 15.25 分钟） |
+| `max.poll.interval.ms` | 90,000 ms（`maxInterval` 的 1.5 倍安全余量） |
+
+详细的参数推导方法、实测日志（全程 0 次 rebalance、consumer generation 保持不变的证据）
+见 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md) 场景四章节。
+
+## 四场景实测日志与风险分析
+
+`docs/` 目录下保存了四个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+
+- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log) / [`docs/scenario4.log`](docs/scenario4.log)：四次真实运行的完整日志备份
 - [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)：逐场景分析 rebalance 触发过程，
   并总结对业务操作的潜在风险（消息重复处理、消费延迟堆积、隐蔽的"看似合理配置"风险等）及缓解建议
 
@@ -167,6 +210,9 @@ docker compose ps
 
 # 场景三：整体配置合理，但阻塞式重试导致超时
 ./gradlew bootRun --args='--spring.profiles.active=scenario3'
+
+# 场景四：下游临时不可用，指数退避重试最终成功，不触发 rebalance
+./gradlew bootRun --args='--spring.profiles.active=scenario4'
 
 # 不指定 profile 时默认等价于 scenario1
 ./gradlew bootRun
@@ -241,6 +287,29 @@ ERROR o.s.kafka.listener.DefaultErrorHandler - Backoff FixedBackOffExecution[int
 真实运行中该场景一共触发了 6 次 rebalance（2 条"毒消息" × 各自最多 4 次尝试，每次尝试都独立
 触发一次），完整日志见 [`docs/scenario3.log`](docs/scenario3.log)，详细分析见
 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)。
+
+#### 场景四日志示意（基于 `docs/scenario4.log` 实测节选）
+
+```
+INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=xxx partition=2 这是第 1 次尝试（模拟下游服务临时不可用）
+ERROR c.e.k.listener.FlakyDownstreamEventListener - 模拟下游仍不可用：id=xxx 第 1 次尝试失败，将触发指数退避重试
+WARN  c.e.k.config.Scenario4ErrorHandlerConfig - 消息 offset=1 partition=2 第 1 次投递失败，将进行指数退避重试
+
+... 约 500ms 后（initialInterval）重新调用 poll() 并再次尝试，仍然是 generation 1，未发生 rebalance ...
+
+INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=xxx partition=2 这是第 2 次尝试（模拟下游服务临时不可用）
+
+... 约 1000ms（500*2）、2000ms（500*4）、3000ms（触达 maxInterval 封顶）依次重试 ...
+
+INFO  c.e.k.listener.FlakyDownstreamEventListener - 收到消息 id=xxx partition=2 这是第 5 次尝试（模拟下游服务临时不可用）
+INFO  c.e.k.listener.FlakyDownstreamEventListener - 模拟下游已恢复：id=xxx 第 5 次尝试将正常处理
+INFO  c.e.k.listener.FlakyDownstreamEventListener - 消息处理完成并已提交 offset id=xxx
+```
+
+真实运行中该场景**全程 0 次 rebalance**（`grep -c "partitions revoked" docs/scenario4.log` = 0），
+consumer 的 `generation` 自始至终保持为 `1`，心跳持续正常，3 条消息全部成功提交 offset。
+完整日志见 [`docs/scenario4.log`](docs/scenario4.log)，详细分析（含生产环境 15 分钟真实
+参数配置建议）见 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)。
 
 `logback-spring.xml` 已将以下 logger 调至 `DEBUG`，可清晰观察整个过程：
 - `org.apache.kafka.clients.consumer.internals.AbstractCoordinator`
