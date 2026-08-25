@@ -108,7 +108,7 @@ class DemoEventProducer(
             payload = "demo-event-$index",
             slow = slow,
             retryTrigger = retryTrigger,
-            createdAt = Instant.now()
+            createdAt = Instant.now().toString()
         )
 
     private fun resolveActiveScenario(): Scenario {

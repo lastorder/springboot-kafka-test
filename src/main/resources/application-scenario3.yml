@@ -1,12 +1,13 @@
 # 场景三：max.poll.records 较大，但整体配置"看起来合理"
 # （10 条 * 200ms 正常处理 = 2000ms，远小于 8000ms 阈值）。
 #
-# 但由于配置了阻塞式重试（DefaultErrorHandler + FixedBackOff），
-# 批次中一旦有消息处理失败触发重试，重试的等待时间会同步累加到
-# 同一次 poll 循环里，最终总耗时会超过 max.poll.interval.ms，触发 rebalance。
+# 但由于配置了阻塞式重试（DefaultErrorHandler + FixedBackOff），一旦某条消息
+# 处理失败触发重试，DefaultErrorHandler 的单次重试等待时间（9000ms）本身就
+# 超过了 max.poll.interval.ms（8000ms）——即便重试之间会重新调用 poll()，
+# 距离上一次成功 poll() 的间隔也已经超时，同样会触发 rebalance。
 #
-# 计算：1 次失败 + 最多 3 次重试 * (3000ms 等待 + 200ms 处理) ≈ 9600ms，
-# 加上同批次其余消息的正常处理耗时，合计远超过 8000ms 阈值。
+# 关键点：这不是"总耗时累加"，而是"单次等待就超标"。session.timeout.ms
+# 也相应调大，避免因心跳线程本身受阻（本场景不涉及）而误报。
 spring:
   kafka:
     consumer:

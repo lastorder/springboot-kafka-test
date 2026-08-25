@@ -17,10 +17,14 @@ import org.springframework.stereotype.Component
  *
  * 但当消息标记 retryTrigger=true 时，本方法会抛出 [TransientProcessingException]。
  * 该异常被 [com.example.kafkarebalance.config.Scenario3ErrorHandlerConfig] 中注册的
- * DefaultErrorHandler 捕获并按 FixedBackOff 阻塞式重试：每次重试前同步等待 3000ms，
- * 最多重试 3 次。这些等待 + 重试处理的耗时都发生在同一个消费线程、同一次 poll 循环内，
- * 不会被"重新调用 poll()"打断，因此会叠加到本次批次的总耗时中，
- * 最终超过 max.poll.interval.ms，触发 rebalance——即便"平均"配置完全合理。
+ * DefaultErrorHandler 捕获并按 FixedBackOff 阻塞式重试：每次重试前同步等待 9000ms，
+ * 最多重试 3 次。
+ *
+ * 重要（已通过实测校正）：DefaultErrorHandler 在每次重试之间都会重新调用
+ * KafkaConsumer#poll()，因此"多次重试的总耗时"并不会累加计入 max.poll.interval.ms；
+ * 真正的风险点在于**单次**重试等待时间本身——只要这一次等待超过 max.poll.interval.ms，
+ * 距离上一次成功 poll() 的间隔就已经超时，同样会触发 rebalance，
+ * 即便平时"平均"配置看起来完全合理。
  */
 @Component
 @Profile("scenario3")
@@ -44,7 +48,7 @@ class RetryProneEventListener {
 
         if (event.retryTrigger) {
             log.error(
-                "模拟处理失败：id={}，将抛出可重试异常，触发 DefaultErrorHandler 的阻塞式重试（每次等待 3000ms，最多 3 次）",
+                "模拟处理失败：id={}，将抛出可重试异常，触发 DefaultErrorHandler 的阻塞式重试（单次等待 9000ms，最多 3 次）",
                 event.id
             )
             throw TransientProcessingException("模拟瞬时处理失败 id=${event.id}")

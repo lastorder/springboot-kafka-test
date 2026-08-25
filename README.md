@@ -46,7 +46,7 @@ src/main/resources/
 |------|-------------------|------------------------|----------|----------|
 | 场景一 | 1  | 6000 | 单条消息处理耗时（10s）直接超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario1'` |
 | 场景二 | 10 | 6000 | 单条不慢（800ms），但批量数量大，10 条累计 8000ms 超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario2'` |
-| 场景三 | 10 | 8000 | 整体配置合理（10 条累计仅 2000ms），但阻塞式重试的等待耗时叠加导致超时 | `./gradlew bootRun --args='--spring.profiles.active=scenario3'` |
+| 场景三 | 10 | 8000 | 整体配置合理（10 条累计仅 2000ms），但阻塞式重试的**单次**等待时间超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario3'` |
 
 ### 场景一：单条消息处理过慢（`SlowEventListener`）
 
@@ -92,11 +92,11 @@ spring.kafka.consumer.properties:
 `DemoEventProducer` 在该场景下会把 15 条消息全部发到**同一个分区**（`key="0"`）且几乎无发送间隔，
 确保这些消息在 consumer 首次 `poll()` 之前就已全部写入 broker，从而一次 poll 能拉满 10 条，稳定复现该现象。
 
-### 场景三：整体配置合理，但阻塞式重试导致超时（`RetryProneEventListener`）
+### 场景三：整体配置合理，但阻塞式重试的单次等待超标（`RetryProneEventListener`）
 
 这是最容易被忽视、也最贴近生产事故的场景：**表面上所有参数都配得"很保守很合理"，
-但因为引入了同步阻塞式重试（`DefaultErrorHandler` + `FixedBackOff`），一条消息的失败重试
-就能让整个批次的耗时暴涨，进而触发 rebalance**。
+但因为引入了阻塞式重试（`DefaultErrorHandler` + `FixedBackOff`），一次较长的重试等待
+就足以触发 rebalance**。
 
 `application-scenario3.yml` 关键配置：
 
@@ -108,23 +108,34 @@ spring.kafka.consumer.properties:
 
 正常情况下：10 条 × 200ms = 2000ms，远小于 8000ms 阈值，配置本身完全没有问题。
 
-但 `Scenario3ErrorHandlerConfig` 注册了一个使用 `FixedBackOff(3000ms, maxAttempts=3)` 的
+`Scenario3ErrorHandlerConfig` 注册了一个使用 `FixedBackOff(9000ms, maxAttempts=3)` 的
 `DefaultErrorHandler`。当 `RetryProneEventListener` 遇到 `retryTrigger=true` 的消息时会抛出
-`TransientProcessingException`，触发该 ErrorHandler 的重试逻辑：
+`TransientProcessingException`，触发该 ErrorHandler 的重试逻辑。
+
+> **本项目在实测中修正过一次设计假设，特此记录**：最初以为"重试总耗时会累加"，
+> 但实测发现 `DefaultErrorHandler` 在每次重试之间都会重新调用 `KafkaConsumer#poll()`，
+> 这会重置"距离上次成功 poll 的时间"计时器。因此真正的风险点不是"多次重试的总耗时"，
+> 而是**单次**重试等待时间本身是否超过 `max.poll.interval.ms`：
 
 ```
-1 次失败 + 最多 3 次重试 × (等待 3000ms + 处理 200ms) ≈ 9600ms
-加上同批次其余消息的正常处理耗时（约 1800ms）
-总计 ≈ 11400ms  >  max.poll.interval.ms(8000ms)  → 触发 rebalance
+单次重试等待 9000ms  >  max.poll.interval.ms(8000ms)  → 该次等待期间即触发 rebalance
 ```
 
-**关键原理**：`DefaultErrorHandler` 的重试是**同步阻塞**在当前消费线程里完成的——重试前的等待
-并不会释放线程去调用 `KafkaConsumer#poll()`，因此重试耗时会直接累加到本次批次的总处理时间中。
-这意味着：即便你把 `max.poll.records` 和 `max.poll.interval.ms` 都配得很"保守"，只要引入了
-阻塞式重试 + 较长的 backoff，个别消息的失败仍然可能拖垮整个批次并触发 rebalance。
+**关键原理**：即便把 `max.poll.records` 和 `max.poll.interval.ms` 都配得很"保守"，
+只要引入了阻塞式重试、且某一次重试的等待时间本身超过阈值，这一次等待就会独立触发
+rebalance——与总共重试了几次无关。详见 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)
+中基于真实日志的完整分析。
 
 `DemoEventProducer` 在该场景下发送 12 条消息到同一分区，其中 index=0 和 index=6 两条消息
 标记 `retryTrigger=true`，用于模拟批次中出现"瞬时失败"的情况。
+
+## 三场景实测日志与风险分析
+
+`docs/` 目录下保存了三个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+
+- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log)：三次真实运行的完整日志备份
+- [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)：逐场景分析 rebalance 触发过程，
+  并总结对业务操作的潜在风险（消息重复处理、消费延迟堆积、隐蔽的"看似合理配置"风险等）及缓解建议
 
 ## 快速开始
 
@@ -205,23 +216,31 @@ WARN  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer ...] Member ...
 INFO  o.s.k.listener.KafkaMessageListenerContainer - partitions revoked: [slow-events-0]
 ```
 
-#### 场景三日志示意
+#### 场景三日志示意（基于 `docs/scenario3.log` 实测节选）
 
 ```
-INFO  c.e.k.listener.RetryProneEventListener - 收到消息 id=xxx partition=0 retryTrigger=true
-ERROR c.e.k.listener.RetryProneEventListener - 模拟处理失败：id=xxx，将抛出可重试异常，触发 DefaultErrorHandler 的阻塞式重试（每次等待 3000ms，最多 3 次）
-WARN  c.e.k.config.Scenario3ErrorHandlerConfig - 消息 offset=0 partition=0 第 1 次投递失败，将进行阻塞式重试等待 3000ms：模拟瞬时处理失败 id=xxx
+INFO  c.e.k.listener.RetryProneEventListener - 收到消息 id=xxx partition=2 retryTrigger=true
+ERROR c.e.k.listener.RetryProneEventListener - 模拟处理失败：id=xxx，将抛出可重试异常，触发 DefaultErrorHandler 的阻塞式重试（单次等待 9000ms，最多 3 次）
+WARN  c.e.k.config.Scenario3ErrorHandlerConfig - 消息 offset=0 partition=2 第 1 次投递失败，将进行阻塞式重试等待 9000ms：模拟瞬时处理失败 id=xxx
 
-... 等待 3000ms 后重试，再次失败 ...
+... 约 8 秒后，单次重试等待本身已超过 max.poll.interval.ms=8000ms ...
 
-WARN  c.e.k.config.Scenario3ErrorHandlerConfig - 消息 offset=0 partition=0 第 2 次投递失败，将进行阻塞式重试等待 3000ms：模拟瞬时处理失败 id=xxx
-WARN  c.e.k.config.Scenario3ErrorHandlerConfig - 消息 offset=0 partition=0 第 3 次投递失败，将进行阻塞式重试等待 3000ms：模拟瞬时处理失败 id=xxx
-
-... 累计耗时（约 9600ms + 其余消息处理时间）超过 max.poll.interval.ms=8000ms ...
-
+WARN  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer ...] consumer poll timeout has expired...
 WARN  o.a.k.c.consumer.internals.ConsumerCoordinator - [Consumer ...] Member ... sending LeaveGroup request to coordinator ... due to consumer poll timeout has expired.
-INFO  o.s.k.listener.KafkaMessageListenerContainer - partitions revoked: [slow-events-0]
+INFO  o.s.kafka.listener.KafkaMessageListenerContainer - partitions revoked: [slow-events-0, slow-events-1, slow-events-2]
+
+... 重新分配分区后，消费者立即开始第 2 次重试，同样等待 9000ms，再次触发同样的 rebalance ...
+
+WARN  c.e.k.config.Scenario3ErrorHandlerConfig - 消息 offset=0 partition=2 第 2 次投递失败，将进行阻塞式重试等待 9000ms：模拟瞬时处理失败 id=xxx
+
+... 第 3、4 次重试同理，各自独立触发一次 rebalance，直至重试次数耗尽 ...
+
+ERROR o.s.kafka.listener.DefaultErrorHandler - Backoff FixedBackOffExecution[interval=9000, currentAttempts=4, maxAttempts=3] exhausted for slow-events-2@0
 ```
+
+真实运行中该场景一共触发了 6 次 rebalance（2 条"毒消息" × 各自最多 4 次尝试，每次尝试都独立
+触发一次），完整日志见 [`docs/scenario3.log`](docs/scenario3.log)，详细分析见
+[`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)。
 
 `logback-spring.xml` 已将以下 logger 调至 `DEBUG`，可清晰观察整个过程：
 - `org.apache.kafka.clients.consumer.internals.AbstractCoordinator`

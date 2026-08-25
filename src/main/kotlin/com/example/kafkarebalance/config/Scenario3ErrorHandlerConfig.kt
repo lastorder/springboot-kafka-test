@@ -10,10 +10,15 @@ import org.springframework.util.backoff.FixedBackOff
 /**
  * 场景三专用：注册一个使用阻塞式 [FixedBackOff] 的 [DefaultErrorHandler]。
  *
- * 重要特性（也是本场景要演示的坑）：DefaultErrorHandler 的重试是在**同一个消费线程**、
- * **同一次 poll 循环内**同步进行的——重试前的等待用的是 Thread.sleep 语义的阻塞等待，
- * 并不会释放线程去调用 KafkaConsumer#poll()。因此重试耗时会直接累加到本次批次的
- * 总处理时间里，如果耗时超过 max.poll.interval.ms，同样会触发 consumer group rebalance。
+ * 重要说明（已通过实测校正）：Spring Kafka 的 DefaultErrorHandler 在两次重试之间
+ * 会重新调用 KafkaConsumer#poll()（哪怕本地队列已有数据），这意味着只要
+ * **单次重试等待时间**本身小于 max.poll.interval.ms，就不会触发 rebalance——
+ * 因为每次 poll() 都会重置"距离上次 poll 的时间"这个计时器。
+ *
+ * 因此要复现"重试导致 rebalance"，必须让**单次**重试等待时间本身就超过
+ * max.poll.interval.ms（而不是指望多次重试的总耗时累加触发）。
+ * 本场景将 backoff 间隔设置为 9000ms，超过 application-scenario3.yml 中的
+ * max.poll.interval.ms=8000ms，从而在第一次重试等待期间就会触发 rebalance。
  */
 @Configuration
 @Profile("scenario3")
@@ -23,7 +28,7 @@ class Scenario3ErrorHandlerConfig {
 
     @Bean
     fun errorHandler(): DefaultErrorHandler {
-        // 每次重试前等待 3000ms，最多重试 3 次（不含首次尝试）
+        // 单次重试等待 9000ms，超过 max.poll.interval.ms=8000ms；最多重试 3 次
         val backOff = FixedBackOff(RETRY_INTERVAL_MS, MAX_RETRY_ATTEMPTS)
         val errorHandler = DefaultErrorHandler(backOff)
         errorHandler.setRetryListeners(object : org.springframework.kafka.listener.RetryListener {
@@ -38,7 +43,7 @@ class Scenario3ErrorHandlerConfig {
     }
 
     companion object {
-        private const val RETRY_INTERVAL_MS = 3000L
+        private const val RETRY_INTERVAL_MS = 9000L
         private const val MAX_RETRY_ATTEMPTS = 3L
     }
 }

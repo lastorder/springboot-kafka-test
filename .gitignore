@@ -4,6 +4,7 @@ HELP.md
 .kotlin/
 build/
 *.log
+!docs/*.log
 *.hprof
 
 ### macOS ###
