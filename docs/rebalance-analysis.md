@@ -79,6 +79,64 @@ offset 全部作废**，重新分配后消费者会从**上一次成功提交的
 会从新的（更靠后的）已提交 offset 继续消费，此后随着消息逐渐被处理完、新到消息量减少，
 每次 poll 拉到的消息数自然下降，不再稳定触发超时。
 
+### 补充分析：第一次 rebalance 前后，offset 到底提交到了哪里？
+
+一个容易被忽略但很关键的问题是：**触发 rebalance 那一刻，之前已经处理过的消息，
+offset 究竟有没有提交成功？** 通过逐行核对 `docs/scenario2.log` 中第一次 rebalance
+（`16:27:55.152 partitions revoked`）前后的 `Committing:` / `Committed offset` 日志，
+可以得到非常明确的答案：**部分提交成功，部分处于"已发起但未确认"的中间状态**。
+
+第一次 poll 拉到 10 条消息（offset 1~10），`BatchSlowEventListener` 按顺序逐条处理、
+每条处理完立即调用 `ack.acknowledge()`：
+
+```
+16:27:47.023 Received: 10 records                         <- 一次 poll 拉到 10 条（offset 1~10）
+16:27:47.845 Committed offset 1 for partition slow-events-2   <- 已确认提交
+16:27:48.659 Committed offset 2 for partition slow-events-2   <- 已确认提交
+16:27:49.475 Committed offset 3 for partition slow-events-2   <- 已确认提交
+16:27:50.291 Committed offset 4 for partition slow-events-2   <- 已确认提交
+16:27:51.099 Committed offset 5 for partition slow-events-2   <- 已确认提交
+16:27:51.911 Committed offset 6 for partition slow-events-2   <- 已确认提交
+16:27:52.723 Committed offset 7 for partition slow-events-2   <- 已确认提交（最后一次收到确认）
+16:27:53.530 Committing: {slow-events-2=OffsetAndMetadata{offset=8, ...}}   <- 只有"发起"日志
+16:27:54.343 Committing: {slow-events-2=OffsetAndMetadata{offset=9, ...}}   <- 只有"发起"日志
+16:27:55.151 Committing: {slow-events-2=OffsetAndMetadata{offset=10, ...}}  <- 只有"发起"日志
+16:27:55.152 partitions revoked: [slow-events-0, slow-events-1, slow-events-2]   <- rebalance 发生
+```
+
+关键观察：
+- **offset 1~7 明确提交成功**（每一条都有对应的 `Committed offset N` 回执日志），
+  这 7 条消息的 offset 已经安全写入 `__consumer_offsets`，不会被重复消费。
+- **offset 8、9、10 只看到 `Committing:`（客户端发起提交请求）、没有看到对应的
+  `Committed`（收到 broker 确认）**——这三次提交请求几乎是贴着 poll 超时/发起
+  LeaveGroup 的时间点发出的，此时消费者可能已经失去了这些分区的所有权，
+  提交请求大概率会失败或被 broker 拒绝（`CommitFailedException` 或静默失败，
+  取决于失败发生的具体阶段），日志中确实没有出现与之对应的确认记录。
+
+rebalance 完成、消费者重新拿回分区后的日志印证了这一点：
+
+```
+16:27:55.161 Received: 8 records                          <- 重新拿到分区后，从上次真正提交成功的位置继续拉取
+16:27:55.967 Committing: {slow-events-2=OffsetAndMetadata{offset=8, ...}}
+16:27:55.975 Committed offset 8 for partition slow-events-2   <- 这次才真正确认成功
+16:27:55.975 消息处理完成并已提交 offset id=fe121eca-...       <- 对应 offset=7 那条消息重新被处理
+```
+
+`Received: 8 records`（而不是剩下的 5 条）说明 broker 端真正生效的已提交 offset
+就是 7（下一条待消费 offset 是 8），也就是说 **offset 8、9、10 对应的三条消息
+在 rebalance 后被重新投递、重新处理了一遍**，尽管它们在 rebalance 之前实际上已经
+被 `BatchSlowEventListener` 完整处理过一次（业务逻辑已经执行完毕，只是提交 offset
+的请求没有来得及被确认）。
+
+**结论**：场景二并不是"要么全部提交成功、要么全部作废重来"的非黑即白局面，而是
+**在 rebalance 发生的临界时刻，总会有一小段"已处理但提交状态不确定"的消息**——
+这批消息的业务逻辑对外部系统产生的副作用（如果有的话）已经真实发生了一次，
+rebalance 后还会再发生一次。相比场景一里"同一条消息死循环重试"的极端情况，
+场景二给出的是一个更具普遍性、更贴近真实生产环境的证据：**任何一次 rebalance，
+无论其成因是什么、无论批次内是否存在"毒消息"，其临界时刻附近的若干条消息
+都天然处于重复处理的高风险窗口内**，这进一步强化了下文"消费逻辑必须幂等"
+这一结论的必要性。
+
 ---
 
 ## 场景三：整体配置合理，但阻塞式重试的单次等待超标（`docs/scenario3.log`）
@@ -154,6 +212,10 @@ offset 全部作废**，重新分配后消费者会从**上一次成功提交的
   近似死循环现象（18 次 rebalance 中只成功提交了 1 条消息）——如果这类"毒消息"
   没有幂等保护 + 没有最终跳过机制，会导致该分区的消费**长期停滞不前**，
   后续消息全部被阻塞在其之后，造成消费延迟无限扩大。
+- 场景二的日志进一步证明，即便没有"毒消息"、批次整体处理完全正常，**rebalance
+  发生的临界时刻附近仍然会有若干条"已处理但提交状态不确定"的消息**（详见该场景的
+  补充分析），这些消息在 rebalance 后会被重新投递、重复处理一遍——说明重复处理风险
+  并非只存在于"处理异常"的极端场景，而是**任意一次 rebalance 都会天然产生的通用现象**。
 
 **业务建议**：所有 Kafka 消费逻辑必须做到幂等（例如基于消息唯一 ID 做去重表/状态机判断），
 否则 rebalance 会把"处理慢"的问题放大成"数据重复/数据错误"的更严重问题。
@@ -216,7 +278,7 @@ LeaveGroup 请求本身也会给 group coordinator（broker）带来额外负载
 | 文件 | Profile | 关键参数 | 观察到的 rebalance 次数 | 说明 |
 |---|---|---|---|---|
 | `docs/scenario1.log` | `scenario1` | `max.poll.records=1`，`max.poll.interval.ms=6000` | 18 次 | 单条 slow=true 消息处理 10s 直接超时；出现"毒消息"死循环现象 |
-| `docs/scenario2.log` | `scenario2` | `max.poll.records=10`，`max.poll.interval.ms=6000` | 2 次 | 单条 800ms 不慢，批量累计 8000ms 超时；全部 15 条消息最终成功处理 |
+| `docs/scenario2.log` | `scenario2` | `max.poll.records=10`，`max.poll.interval.ms=6000` | 2 次 | 单条 800ms 不慢，批量累计 8000ms 超时；全部 15 条消息最终成功处理，但首次 rebalance 边界处有 3 条消息（offset 8~10）被重复投递处理，详见场景二补充分析 |
 | `docs/scenario3.log` | `scenario3` | `max.poll.records=10`，`max.poll.interval.ms=8000`，`FixedBackOff(9000ms, 3次)` | 6 次 | 2 条"毒消息" × 最多 4 次尝试，每次单独等待即超时；其余 10 条消息正常提交 |
 
 （日志文件较大，均已完整保留在 `docs/` 目录，关键片段的时间戳可用于交叉核对本报告中的分析。）
