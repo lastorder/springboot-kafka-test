@@ -3,6 +3,8 @@ HELP.md
 .gradle-home/
 .kotlin/
 build/
+*.log
+*.hprof
 
 ### macOS ###
 .DS_Store

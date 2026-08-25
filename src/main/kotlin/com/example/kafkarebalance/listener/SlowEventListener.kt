@@ -2,6 +2,7 @@ package com.example.kafkarebalance.listener
 
 import com.example.kafkarebalance.model.DemoEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.annotation.Profile
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.support.KafkaHeaders
@@ -9,10 +10,10 @@ import org.springframework.messaging.handler.annotation.Header
 import org.springframework.stereotype.Component
 
 /**
- * 监听 slow-events topic。
+ * 场景一：监听 slow-events topic，模拟"单条消息处理过慢直接超时"。
  *
  * 当收到 slow=true 的消息时，人为阻塞 10 秒来模拟"业务处理很慢"。
- * 由于 application.yml 中 max.poll.interval.ms 配置为 6000ms（小于 10s），
+ * 由于 application-scenario1.yml 中 max.poll.interval.ms 配置为 6000ms（小于 10s），
  * 消费者在两次 poll 之间的间隔会超过该阈值，broker 端的 group coordinator
  * 会判定该 consumer 已失联，从而触发 consumer group 的 rebalance。
  *
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Component
  * 生产代码中不应在监听方法里进行同步阻塞式的耗时操作。
  */
 @Component
+@Profile("scenario1")
 class SlowEventListener {
 
     private val log = LoggerFactory.getLogger(SlowEventListener::class.java)

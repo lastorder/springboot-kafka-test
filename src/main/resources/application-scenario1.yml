@@ -1,0 +1,12 @@
+# 场景一：单条消息处理过慢，直接超过 max.poll.interval.ms
+#
+# max.poll.records=1，每次只拉 1 条消息，因此"消费者被判定失联"的原因非常单纯：
+# 就是这一条消息本身处理耗时（10s）超过了 max.poll.interval.ms（6s）。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 6000
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000

@@ -1,0 +1,14 @@
+# 场景二：单条消息处理并不慢，但 max.poll.records 设置得较大，
+# 一次 poll 拉取的多条消息的"累计处理耗时"超过 max.poll.interval.ms。
+#
+# 计算：BatchSlowEventListener 每条固定处理 800ms，max.poll.records=10，
+# 10 * 800ms = 8000ms > max.poll.interval.ms(6000ms) —— 触发 rebalance。
+# 对比：如果 max.poll.records=1，单条 800ms 远小于 6000ms，不会 rebalance。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 6000
+        max.poll.records: 10
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
