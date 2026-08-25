@@ -1,0 +1,34 @@
+server:
+  port: 8080
+
+app:
+  kafka:
+    topic: slow-events
+
+spring:
+  application:
+    name: kafka-rebalance-demo
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+    consumer:
+      group-id: slow-consumer-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.example.kafkarebalance.model"
+        spring.json.value.default.type: "com.example.kafkarebalance.model.DemoEvent"
+        # 处理超过该间隔视为消费者已失联，触发 rebalance —— 是本演示的核心配置
+        max.poll.interval.ms: 6000
+        # 每次只拉取 1 条，让"慢处理"对 poll 间隔的影响更明显、更易观察
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 1

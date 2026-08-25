@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 观察 rebalance 触发过程：JoinGroup/SyncGroup、心跳失败、分区 revoke/assign -->
+    <logger name="org.apache.kafka.clients.consumer.internals.AbstractCoordinator" level="DEBUG"/>
+    <logger name="org.apache.kafka.clients.consumer.internals.ConsumerCoordinator" level="DEBUG"/>
+
+    <!-- 降噪：Fetcher 日志量很大，对观察 rebalance 无太大帮助 -->
+    <logger name="org.apache.kafka.clients.consumer.internals.Fetcher" level="WARN"/>
+
+    <!-- Spring Kafka 容器层面的 rebalance 回调、容器生命周期日志 -->
+    <logger name="org.springframework.kafka.listener" level="DEBUG"/>
+
+    <!-- 本项目业务日志 -->
+    <logger name="com.example.kafkarebalance" level="DEBUG"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+</configuration>
