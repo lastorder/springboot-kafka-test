@@ -1,18 +1,20 @@
 # Kafka Consumer Group Rebalance 场景日志分析报告
 
-本报告基于 `docs/scenario1.log`、`docs/scenario2.log`、`docs/scenario3.log`、`docs/scenario4.log`
-四次真实本地运行（Spring Boot 4.0.4、spring-kafka 4.0.4、Kafka 4.1.2 broker、单节点 KRaft，
-通过 `docker compose` 本地启动）产生的日志，逐一分析每种场景下 rebalance 的触发过程
-（或不触发的原因），并总结对业务的潜在风险。
+本报告基于 `docs/scenario1.log`、`docs/scenario2.log`、`docs/scenario3.log`、`docs/scenario4.log`、
+`docs/scenario5.log` 五次真实本地运行（Spring Boot 4.0.4、spring-kafka 4.0.4、
+Kafka 4.1.2 broker、单节点 KRaft，通过 `docker compose` 本地启动）产生的日志，
+逐一分析每种场景下 rebalance 的触发过程（或不触发的原因），并总结对业务的潜在风险。
 
 > 复现环境：单实例（只有 1 个 consumer）加入 `slow-consumer-group`。由于组内只有一个成员，
 > 每次 rebalance 实际表现为"该成员被踢出 → 重新 JoinGroup → 重新拿回全部分区"，
 > 不会像多实例场景那样把分区转移给别的存活实例。但触发条件、日志特征、以及对
 > **消息处理与 offset 提交**的影响，与多实例场景完全一致，因此结论同样适用于生产环境的多实例部署。
 
-> 四个场景中，场景一、二、三演示的是**会触发 rebalance** 的三种不同成因；
-> 场景四则是**不触发 rebalance** 的正面案例——通过合理配置指数退避的单次等待上限，
-> 即便下游服务临时不可用、需要重试很多次、总耗时很长，也能安全完成重试而不影响消费组稳定性。
+> 五个场景中，场景一、二、三演示的是**会触发 rebalance** 的三种不同成因；
+> 场景四是**不触发 rebalance** 的正面案例——通过合理配置指数退避的单次等待上限，
+> 即便下游服务临时不可用、需要重试很多次、总耗时很长，也能安全完成重试而不影响消费组稳定性；
+> 场景五则专门用于回答一个更细节的计时问题："如果处理已经花费了一部分时间才失败，
+> 退避等待是否会扣除这部分已耗费的时间？"（答案见场景五章节）。
 
 ---
 
@@ -302,6 +304,161 @@ rebalance 后还会再发生一次。相比场景一里"同一条消息死循环
 
 ---
 
+## 场景五：处理耗时是否会被退避等待时间"扣除"？（`docs/scenario5.log`）
+
+### 提出的问题
+
+场景三、四都涉及"重试等待时间"，但都没有回答一个更细节的问题：
+
+> **如果一次 poll 的消息处理已经花了 N 秒（比如调用下游、等待超时耗费了这些时间），
+> 然后抛出异常触发退避等待 M 秒，那么距离下一次重新调用 poll() 的实际间隔，
+> 是 M 秒，还是 (M-N) 秒？**
+
+这个问题在评估"退避 + 处理耗时会不会一起把 `max.poll.interval.ms` 顶爆"时非常关键——
+如果退避时间会自动扣除已经消耗的处理时间，那么总耗时上限就是 `max(单次退避时间, 处理时间)`；
+如果不会扣除，总耗时上限就是"处理时间 + 完整退避时间"两者相加。场景一、二、三、四
+现有的日志都无法回答这个问题，因为这些场景中"异常抛出前的处理耗时"要么是 0
+（立即抛异常），要么虽然有耗时但没有精确到毫秒级去对比退避等待的实际时长。
+因此专门设计了本场景来做一次单变量对照实验。
+
+### 源码依据（先看代码，再看实测是否吻合）
+
+阅读 spring-kafka 4.0.4 的 `DefaultErrorHandler` 调用链路源码：
+
+```java
+// org.springframework.kafka.listener.FailedRecordTracker#recovered
+long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
+if (nextBackOff != BackOffExecution.STOP) {
+    this.backOffHandler.onNextBackOff(container, exception, nextBackOff);
+    return false;
+}
+
+// org.springframework.kafka.listener.DefaultBackOffHandler#onNextBackOff
+@Override
+public void onNextBackOff(MessageListenerContainer container, Exception exception, long nextBackOff) {
+    if (container == null) {
+        Thread.sleep(nextBackOff);
+    }
+    else {
+        ListenerUtils.stoppableSleep(container, nextBackOff);
+    }
+}
+```
+
+`nextBackOff` 的值直接来自 `BackOffExecution#nextBackOff()`——也就是 `FixedBackOff`/
+`ExponentialBackOff` 配置的间隔本身，**代码中没有任何地方读取"本次处理已经消耗了多久"
+并做减法**。据此可以从源码层面预判：退避等待时间与处理耗时无关，是从**抛出异常的那一刻**
+开始独立计时的完整时长。本场景通过实测验证这个源码层面的判断是否成立。
+
+### 配置
+
+- `Scenario5ErrorHandlerConfig` 注册 `FixedBackOff(10000ms, maxAttempts=3)`（固定退避 10 秒）
+- `BackoffTimingEventListener` 对 flaky 消息前 2 次尝试：先 `Thread.sleep(4000ms)`
+  模拟"处理耗费了 4 秒才失败"，再抛出异常；第 3 次尝试视为成功
+- `application-scenario5.yml` 中 `max.poll.interval.ms=20000`（20 秒），刻意设置得
+  足够宽松（远大于"处理 4s + 退避 10s = 14s"的最坏情况），确保本次实验只关注
+  "退避计时是否独立于处理耗时"这一个变量，不会被 rebalance 干扰
+- 每条日志都记录 `System.currentTimeMillis()` 的精确时间戳（`startEpochMs`/
+  `throwEpochMs`/`endEpochMs`），避免依赖日志打印本身的时刻误差，直接从时间戳算出准确间隔
+
+### 实测结果（`docs/scenario5.log`）
+
+```
+09:30:12.654 收到消息 ... 第 1 次尝试，开始处理，startEpochMs=1787707812654
+09:30:16.659 模拟处理失败：第 1 次尝试在耗费 4000ms 处理后抛出异常，throwEpochMs=1787707816659（实际耗时=4005ms）
+09:30:16.668 第 1 次投递失败，接下来将退避等待 10000ms
+
+09:30:26.731 收到消息 ... 第 2 次尝试，开始处理，startEpochMs=1787707826731
+09:30:30.734 模拟处理失败：第 2 次尝试在耗费 4000ms 处理后抛出异常，throwEpochMs=1787707830734（实际耗时=4003ms）
+09:30:30.735 第 2 次投递失败，接下来将退避等待 10000ms
+
+09:30:40.749 收到消息 ... 第 3 次尝试，开始处理，startEpochMs=1787707840749
+09:30:40.749 第 3 次尝试成功：endEpochMs=1787707840749（距离本次处理开始耗时=0ms）
+09:30:40.758 消息处理完成并已提交 offset
+```
+
+用精确的 epoch 毫秒时间戳计算实际间隔：
+
+| 区间 | 计算 | 结果 |
+|---|---|---|
+| 第 1 次抛出异常 → 第 2 次开始处理 | `1787707826731 - 1787707816659` | **10,072 ms** |
+| 第 2 次抛出异常 → 第 3 次开始处理 | `1787707840749 - 1787707830734` | **10,015 ms** |
+| 第 1 次开始处理 → 第 2 次开始处理（处理 4s + 退避 10s 的总耗时） | `1787707826731 - 1787707812654` | **14,077 ms** |
+| 第 2 次开始处理 → 第 3 次开始处理 | `1787707840749 - 1787707826731` | **14,018 ms** |
+
+### 结论：退避时间**不会**扣除已消耗的处理时间
+
+两次"抛出异常 → 下一次开始处理"的间隔均约为 **10,000ms**（10072ms、10015ms，
+误差在几十毫秒的调度抖动范围内），与配置的 `FixedBackOff(10000ms)` 完全吻合，
+**丝毫没有体现出"扣除已经耗费的 4 秒处理时间"的迹象**（如果会扣除，应该约为
+10000-4000=6000ms 左右，但实测远高于这个数值）。
+
+同时，两次"开始处理 → 下一次开始处理"的总间隔均约为 **14,000ms**（14077ms、14018ms），
+精确等于"处理耗时(4000ms) + 退避等待(10000ms)"之和，进一步印证了这一点。
+
+**回答用户的问题**：如果一次处理已经花了 N 秒才失败，退避配置的等待时间是 M 秒，
+那么距离下一次重新调用 poll() 的实际间隔是**完整的 M 秒**（从抛出异常那一刻开始计时），
+**而不是 (M-N) 秒**。换句话说，"处理耗时"和"退避等待时间"是**顺序累加**的关系，
+不存在互相抵扣。这与前面阅读 `DefaultBackOffHandler` 源码得出的预判完全一致。
+
+### 这对评估 rebalance 风险意味着什么
+
+结合场景三、四的结论（"决定是否触发 rebalance 的是单次退避等待时间是否超过
+`max.poll.interval.ms`"），场景五进一步明确了完整的计算公式：
+
+```
+单次重试循环的总耗时 = 本次处理耗时（含抛异常前的耗时） + 本次退避等待时间
+```
+
+如果这个总耗时超过了 `max.poll.interval.ms`，就会触发 rebalance——**必须把"处理耗时"
+和"退避等待时间"两者相加一起对照 `max.poll.interval.ms`，而不能只看退避时间本身**。
+这意味着：即便退避的 `maxInterval` 本身小于 `max.poll.interval.ms`，如果处理逻辑
+本身在抛出异常前也消耗了不可忽略的时间（比如调用下游超时耗费了数秒才失败），
+两者相加仍然可能超过阈值，触发原本"看起来不该发生"的 rebalance。这是设计
+"生产环境最优配置"（场景四章节）时必须额外考虑的安全余量来源之一。
+
+---
+
+## 通用结论：两次 poll 之间的间隔一旦超过 max.poll.interval.ms，就会触发 rebalance
+
+综合五个场景的实测数据，可以归纳出一条贯穿全部场景、能够互相印证的**通用规则**：
+
+> **只要消费线程连续两次调用 `KafkaConsumer#poll()` 之间实际经过的时间超过了
+> `max.poll.interval.ms` 配置的阈值，就会触发一次 consumer group rebalance；
+> 反之，只要每一次 poll 到下一次 poll 之间的间隔始终不超过该阈值，
+> 无论期间发生了什么（单条处理慢、批量数量大、抛异常重试、退避等待等），
+> 都不会触发 rebalance。**
+
+这条规则在本项目的每个场景中都得到了独立验证，逐一核对如下：
+
+| 场景 | 触发/不触发 | 两次 poll 间隔与 max.poll.interval.ms 的关系 | 日志证据 |
+|---|---|---|---|
+| 场景一 | 触发（18 次） | 单条消息处理 10s，一次 poll 只拉 1 条，下一次 poll 前必然等待 10s > 6s | `docs/scenario1.log`：处理开始到 `poll timeout has expired` 恰好间隔 6s 左右 |
+| 场景二 | 触发（2 次） | 10 条 × 800ms = 8000ms > 6000ms，一次 poll 拉满 10 条时下一次 poll 前的处理耗时超标 | `docs/scenario2.log`：`Received: 10 records` 到下次 `Received` 之间间隔超过 6s 时触发 |
+| 场景三 | 触发（6 次） | 单次退避等待 9000ms > 8000ms，退避期间不调用 poll，等待结束后才重新 poll，间隔本身已超标 | `docs/scenario3.log`：每次退避开始到下次 `Received: N records` 间隔约 9s |
+| 场景四 | **不触发**（0 次） | 单次退避等待最高 3000ms（封顶）< 6000ms，即使总共重试 4 次也每次都独立小于阈值 | `docs/scenario4.log`：`generation` 全程为 1，从未变化 |
+| 场景五 | 不触发（本场景 max.poll.interval.ms=20000 特意放宽） | 处理耗时(4s) + 退避(10s) = 14s < 20s，因此本场景本身也不会触发；但若换成 `max.poll.interval.ms=12000` 就会触发（14s > 12s） | `docs/scenario5.log`：可推算若阈值设为 12000ms 则必然超时 |
+
+需要特别强调两个容易被误解的细节（均已通过实测确认）：
+
+1. **"两次 poll 之间的间隔"指的是一次 `poll()` 返回、到消费线程处理完这批记录、
+   再次调用下一次 `poll()` 为止的全部耗时**——包括正常业务处理、批量内逐条处理的总和、
+   以及 `DefaultErrorHandler` 抛出异常后的退避等待（退避期间不会调用 `poll()`，
+   见场景三、四的源码分析）。**唯一的例外**是场景三、四揭示的机制：如果配置了
+   重试且重试次数 > 1，`DefaultErrorHandler` 会在每一次退避等待结束后立即调用一次
+   `poll()`（哪怕本地已有数据），这次 `poll()` 调用本身会重置计时器——所以"总重试次数"
+   不会累加计入超时判断，真正起作用的是**每一段独立的 poll 间隔**（可能是"一次退避等待"，
+   也可能是"一次退避等待+若干次处理"，取决于该次 poll 拿到多少条记录）。
+2. 场景五进一步明确：**处理耗时和退避等待时间是顺序相加、不会互相抵扣的**，
+   因此对照阈值时必须用"本段总耗时"（处理 + 退避），而非只看退避配置的数值本身。
+
+这条通用规则可以作为诊断生产环境 rebalance 问题的第一步：只要能够从日志中定位到
+"哪一段 poll 到 poll 之间的间隔超过了 `max.poll.interval.ms`"，就能确定 rebalance
+的直接触发原因，再结合本文档五个场景的成因分类，进一步定位到具体是"单条慢"、
+"批量大"、"重试退避超标"，还是其他导致该间隔过长的业务逻辑。
+
+---
+
 ## 综合结论：Rebalance 对业务操作的潜在风险
 
 ### 1. 消息重复处理（At-Least-Once 语义被放大，甚至可能演变为死循环）
@@ -379,12 +536,66 @@ LeaveGroup 请求本身也会给 group coordinator（broker）带来额外负载
 | `max.poll.records` 设置过大 | 场景二 | 结合"最坏情况下单条处理耗时 × max.poll.records"反推 `max.poll.interval.ms`，或改用较保守的 `max.poll.records` |
 | 阻塞式重试的单次等待时间设置不当 | 场景三 | 重试 backoff 的**单次**最大等待时间必须显著小于 `max.poll.interval.ms`；耗时较长的重试建议改为异步重试（如 Spring Kafka 的 Retry Topic / 非阻塞重试机制），避免占用主消费线程 |
 | 下游服务临时不可用，需要较长时间等待恢复 | 场景四 | 使用 `ExponentialBackOffWithMaxRetries` 并将 `maxInterval` 控制在 `max.poll.interval.ms` 的 1.5～2 倍安全余量以内；可放心地让总重试时长远超过 `max.poll.interval.ms`（只要单次等待不超标） |
+| 忽略了"处理耗时 + 退避等待"需要相加计算 | 场景五 | 设计 `max.poll.interval.ms` 安全余量时，必须用"最坏情况下处理耗时（含抛异常前的耗时）+ 单次退避等待时间"之和来对照阈值，而非只考虑退避时间本身 |
 | 消息重复处理 | 全部场景 | 消费逻辑必须幂等；关键业务配合去重表/状态机/唯一约束 |
 | Rebalance 期间消费空窗 | 场景一、二、三 | 监控 consumer lag 与 rebalance 频率指标；评估是否可切换到 `CooperativeStickyAssignor` 等增量再均衡策略以减少"stop-the-world"影响 |
 
 ---
 
-## 附：四份原始日志与运行参数对照
+## 附：本项目涉及参数的 Spring Kafka / Kafka Client 官方默认值
+
+以下默认值均通过直接读取本项目实际使用的依赖版本（Kafka client 4.1.2、
+spring-kafka 4.0.4、spring-boot-kafka 4.0.4、spring-core 7.0.6）的源码 /
+编译后的 `ConfigDef` 常量核实，而非二手资料，供对照本项目各场景 YAML 中
+显式覆盖的数值时参考"如果不配置，默认是什么"。
+
+### Kafka Consumer 相关（`org.apache.kafka.clients.consumer.ConsumerConfig`）
+
+| 参数 | 官方默认值 | 本项目是否覆盖 | 说明 |
+|---|---|---|---|
+| `max.poll.interval.ms` | **300,000 ms（5 分钟）** | 是，各场景改为 6000~20000ms 以便在几十秒内复现现象 | 两次 `poll()` 之间允许的最大间隔，超过会触发 rebalance |
+| `max.poll.records` | **500** | 是，各场景改为 1 或 10 | 一次 `poll()` 最多返回的记录数 |
+| `session.timeout.ms` | **45,000 ms** | 是，改为 10000~12000ms | 心跳判定超时阈值；心跳线程独立运行，通常不受本项目场景影响 |
+| `heartbeat.interval.ms` | **3,000 ms** | 否，本项目场景均保持默认值 3000ms | 心跳发送间隔，通常建议不超过 `session.timeout.ms` 的 1/3 |
+| `enable.auto.commit` | **true** | 是，本项目全部场景显式设为 `false` | 本项目使用手动 ack（`manual_immediate`），必须关闭自动提交 |
+| `auto.offset.reset` | **latest** | 是，本项目全部场景显式设为 `earliest` | 便于每次从头消费演示数据，不遗漏消息 |
+| `fetch.max.wait.ms` | 500 ms | 否 | 一次 fetch 请求在数据不足时的最大等待时间，与 `max.poll.interval.ms` 无直接关系 |
+| `request.timeout.ms` | 30,000 ms | 否 | 单次网络请求超时，与消费者组超时机制相互独立 |
+| `retry.backoff.ms` | 100 ms | 否 | 客户端网络请求失败后的重试间隔（Kafka client 层面），与本文讨论的
+  `DefaultErrorHandler` 业务级重试是完全不同的两套机制，不要混淆 |
+
+### Spring Kafka 监听容器相关（`org.springframework.kafka.listener.ContainerProperties`）
+
+| 参数 | 官方默认值 | 本项目是否覆盖 |说明 |
+|---|---|---|---|
+| `ackMode` | **`AckMode.BATCH`** | 是，全部场景改为 `MANUAL_IMMEDIATE` | 默认在每批 poll 处理完毕后自动提交；本项目需要精确控制每条消息提交的时机，因此改为手动 |
+| `concurrency`（Spring Boot 属性 `spring.kafka.listener.concurrency`） | 未显式设置时为 **1** | 是，显式设为 1（与默认值相同，仅为清晰起见写出） | 每个 `@KafkaListener` 启动的消费者线程数 |
+
+### Spring Kafka 错误处理相关（`org.springframework.kafka.listener.DefaultErrorHandler` / `SeekUtils`）
+
+| 参数 | 官方默认值 | 本项目是否覆盖 |
+|---|---|---|
+| `DefaultErrorHandler` 无参构造时的默认 BackOff | **`FixedBackOff(0, 9)`**（即间隔 0ms、重试 9 次，共 10 次投递尝试） | 是，场景三、四、五都显式传入了自定义 `BackOff` 实例 |
+
+### Spring `BackOff` 实现类默认值（`org.springframework.util.backoff`）
+
+| 参数 | 所属类 | 官方默认值 |
+|---|---|---|
+| `initialInterval` | `ExponentialBackOff` | **2,000 ms** |
+| `multiplier` | `ExponentialBackOff` | **1.5** |
+| `maxInterval` | `ExponentialBackOff` | **30,000 ms** |
+| `maxElapsedTime` | `ExponentialBackOff` | `Long.MAX_VALUE`（不限制总耗时） |
+| `maxAttempts` | `ExponentialBackOff` | `Long.MAX_VALUE`（不限制重试次数） |
+| `interval` | `FixedBackOff` | 需要显式传入，无内置默认值（构造函数强制要求） |
+
+> 注：`ExponentialBackOffWithMaxRetries`（场景四使用）是 `ExponentialBackOff` 的子类，
+> 通过构造函数传入 `maxRetries` 后会自动反推并锁定 `maxElapsedTime`，其余参数
+> （`initialInterval`/`multiplier`/`maxInterval`）若不显式设置，仍沿用上表中
+> `ExponentialBackOff` 的默认值。
+
+---
+
+## 附：五份原始日志与运行参数对照
 
 | 文件 | Profile | 关键参数 | 观察到的 rebalance 次数 | 说明 |
 |---|---|---|---|---|
@@ -392,5 +603,6 @@ LeaveGroup 请求本身也会给 group coordinator（broker）带来额外负载
 | `docs/scenario2.log` | `scenario2` | `max.poll.records=10`，`max.poll.interval.ms=6000` | 2 次 | 单条 800ms 不慢，批量累计 8000ms 超时；全部 15 条消息最终成功处理，但首次 rebalance 边界处有 3 条消息（offset 8~10）被重复投递处理，详见场景二补充分析 |
 | `docs/scenario3.log` | `scenario3` | `max.poll.records=10`，`max.poll.interval.ms=8000`，`FixedBackOff(9000ms, 3次)` | 6 次 | 2 条"毒消息" × 最多 4 次尝试，每次单独等待即超时；其余 10 条消息正常提交 |
 | `docs/scenario4.log` | `scenario4` | `max.poll.records=1`，`max.poll.interval.ms=6000`，`ExponentialBackOffWithMaxRetries(initial=500ms, multiplier=2, maxInterval=3000ms, maxRetries=8)` | **0 次** | 1 条 flaky 消息前 4 次尝试失败（模拟下游不可用），第 5 次尝试成功（模拟下游恢复）；全程 consumer generation 保持不变，3 条消息全部成功提交 offset |
+| `docs/scenario5.log` | `scenario5` | `max.poll.records=1`，`max.poll.interval.ms=20000`，`FixedBackOff(10000ms, 3次)`，处理耗时固定 4000ms 后抛异常 | 0 次（阈值刻意放宽） | 精确测量退避等待与处理耗时的时间关系：两次"抛异常→下次开始处理"间隔均约 10000ms，证明退避时间**不会**扣除已消耗的处理时间；总间隔（处理+退避）约 14000ms |
 
 （日志文件较大，均已完整保留在 `docs/` 目录，关键片段的时间戳可用于交叉核对本报告中的分析。）

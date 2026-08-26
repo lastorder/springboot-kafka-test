@@ -14,7 +14,7 @@ import java.util.UUID
 /**
  * 应用启动后自动发送一批演示事件到 Kafka。
  *
- * 根据当前激活的 Spring Profile（scenario1/scenario2/scenario3/scenario4）采用不同的
+ * 根据当前激活的 Spring Profile（scenario1~5）采用不同的
  * 发送策略，以配合各自监听器演示不同成因（或不触发）consumer group rebalance 的场景。
  */
 @Component
@@ -35,6 +35,7 @@ class DemoEventProducer(
                 Scenario.SCENARIO2 -> sendScenario2Events()
                 Scenario.SCENARIO3 -> sendScenario3Events()
                 Scenario.SCENARIO4 -> sendScenario4Events()
+                Scenario.SCENARIO5 -> sendScenario5Events()
                 else -> sendScenario1Events()
             }
         }.apply {
@@ -137,17 +138,29 @@ class DemoEventProducer(
             createdAt = Instant.now().toString()
         )
 
+    /**
+     * 场景五：只发送 1 条消息，标记 flaky=true，专用于精确测量
+     * "处理耗时 + 退避等待"之间的时间关系，不需要额外的干扰消息。
+     */
+    private fun sendScenario5Events() {
+        log.info("[scenario5] 开始发送 1 条 flaky 消息，用于验证退避计时是否独立于处理耗时")
+        val event = newEvent(0, slow = false, flaky = true)
+        send(event, SCENARIO2_FIXED_KEY)
+        log.info("[scenario5] 消息发送完毕")
+    }
+
     private fun resolveActiveScenario(): Scenario {
         val activeProfiles = environment.activeProfiles
         return when {
             activeProfiles.contains("scenario2") -> Scenario.SCENARIO2
             activeProfiles.contains("scenario3") -> Scenario.SCENARIO3
             activeProfiles.contains("scenario4") -> Scenario.SCENARIO4
+            activeProfiles.contains("scenario5") -> Scenario.SCENARIO5
             else -> Scenario.SCENARIO1
         }
     }
 
-    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4 }
+    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4, SCENARIO5 }
 
     companion object {
         private const val SCENARIO1_MESSAGE_COUNT = 12

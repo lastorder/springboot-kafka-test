@@ -19,31 +19,35 @@
 src/main/kotlin/com/example/kafkarebalance/
 ├── KafkaRebalanceDemoApplication.kt        # 启动类
 ├── config/
-│   ├── KafkaTopicConfig.kt                 # 声明 3 分区的 slow-events topic（四场景通用）
+│   ├── KafkaTopicConfig.kt                 # 声明 3 分区的 slow-events topic（五场景通用）
 │   ├── Scenario3ErrorHandlerConfig.kt      # 场景三：固定间隔阻塞式重试 ErrorHandler（@Profile("scenario3")）
-│   └── Scenario4ErrorHandlerConfig.kt      # 场景四：指数退避重试 ErrorHandler（@Profile("scenario4")）
-├── model/DemoEvent.kt                      # 事件数据模型（四场景通用）
+│   ├── Scenario4ErrorHandlerConfig.kt      # 场景四：指数退避重试 ErrorHandler（@Profile("scenario4")）
+│   └── Scenario5ErrorHandlerConfig.kt      # 场景五：固定退避 ErrorHandler，用于验证退避计时（@Profile("scenario5")）
+├── model/DemoEvent.kt                      # 事件数据模型（五场景通用）
 ├── producer/DemoEventProducer.kt           # 根据激活的 profile 采用不同发送策略
 └── listener/
     ├── SlowEventListener.kt                # 场景一：单条处理过慢（@Profile("scenario1")）
     ├── BatchSlowEventListener.kt           # 场景二：批量累计耗时过长（@Profile("scenario2")）
     ├── RetryProneEventListener.kt          # 场景三：阻塞式重试导致超时（@Profile("scenario3")）
     ├── FlakyDownstreamEventListener.kt     # 场景四：下游临时不可用，指数退避最终成功（@Profile("scenario4")）
-    └── TransientProcessingException.kt     # 场景三、四共用的可重试异常
+    ├── BackoffTimingEventListener.kt       # 场景五：验证退避等待是否扣除处理耗时（@Profile("scenario5")）
+    └── TransientProcessingException.kt     # 场景三、四、五共用的可重试异常
 src/main/resources/
 ├── application.yml                         # 公共配置（topic、序列化、默认 profile=scenario1）
 ├── application-scenario1.yml               # 场景一专属 Kafka 消费者配置
 ├── application-scenario2.yml               # 场景二专属 Kafka 消费者配置
 ├── application-scenario3.yml               # 场景三专属 Kafka 消费者配置
 ├── application-scenario4.yml               # 场景四专属 Kafka 消费者配置
+├── application-scenario5.yml               # 场景五专属 Kafka 消费者配置
 └── logback-spring.xml                      # 日志配置，重点开启 rebalance 相关 logger
 ```
 
-## 四种 Rebalance 演示场景
+## 五种 Rebalance 演示场景
 
-本项目通过 Spring Profile（`scenario1` / `scenario2` / `scenario3` / `scenario4`）切换四套
-独立的消费者配置 + 监听器实现，前三种演示导致 consumer group rebalance 的常见成因，
-第四种演示如何通过合理配置**避免**触发 rebalance。默认（不指定 profile）激活 `scenario1`。
+本项目通过 Spring Profile（`scenario1` ~ `scenario5`）切换五套独立的消费者配置 +
+监听器实现：前三种演示导致 consumer group rebalance 的常见成因，第四种演示如何通过
+合理配置**避免**触发 rebalance，第五种专门用于精确回答一个关于重试计时的细节问题
+（详见下文）。默认（不指定 profile）激活 `scenario1`。
 
 | 场景 | max.poll.records | max.poll.interval.ms | 触发机制 | 启动命令 |
 |------|-------------------|------------------------|----------|----------|
@@ -51,6 +55,7 @@ src/main/resources/
 | 场景二 | 10 | 6000 | 单条不慢（800ms），但批量数量大，10 条累计 8000ms 超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario2'` |
 | 场景三 | 10 | 8000 | 整体配置合理（10 条累计仅 2000ms），但阻塞式重试的**单次**等待时间超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario3'` |
 | 场景四 | 1 | 6000（本地压缩版） | 下游临时不可用，指数退避重试（单次等待始终小于阈值），最终成功且**不触发** rebalance | `./gradlew bootRun --args='--spring.profiles.active=scenario4'` |
+| 场景五 | 1 | 20000（刻意放宽） | 精确测量"处理耗时 + 退避等待"的时间关系，验证退避时间是否扣除已消耗的处理时间 | `./gradlew bootRun --args='--spring.profiles.active=scenario5'` |
 
 ### 场景一：单条消息处理过慢（`SlowEventListener`）
 
@@ -172,11 +177,33 @@ spring.kafka.consumer.properties:
 详细的参数推导方法、实测日志（全程 0 次 rebalance、consumer generation 保持不变的证据）
 见 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md) 场景四章节。
 
-## 四场景实测日志与风险分析
+### 场景五：验证退避等待是否会扣除已消耗的处理时间（`BackoffTimingEventListener`）
 
-`docs/` 目录下保存了四个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+这个场景用于精确回答一个常见疑问：**"如果处理消息本身已经耗费了一部分时间才失败，
+接下来的退避等待时间，会不会扣除这部分已经消耗的时间？"**
 
-- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log) / [`docs/scenario4.log`](docs/scenario4.log)：四次真实运行的完整日志备份
+`Scenario5ErrorHandlerConfig` 注册固定退避 `FixedBackOff(10000ms, maxAttempts=3)`；
+`BackoffTimingEventListener` 对 flaky 消息前 2 次尝试先 `Thread.sleep(4000ms)`
+模拟"处理耗费 4 秒才失败"，再抛出异常；`application-scenario5.yml` 中
+`max.poll.interval.ms=20000` 刻意设置得很宽松，确保本场景只关注这一个变量，
+不会被 rebalance 干扰。每条日志都记录精确到毫秒的 `System.currentTimeMillis()` 时间戳。
+
+**实测结论**：两次"抛出异常 → 下一次重新开始处理"的间隔均约为 **10,000ms**，
+与配置的退避时间完全吻合，**没有扣除已经消耗的 4 秒处理时间**——退避等待是从
+"抛出异常的那一刻"开始独立计时的完整时长。也就是说：
+
+```
+单次重试循环的总耗时 = 处理耗时（含抛异常前的耗时） + 退避等待时间
+```
+
+两者是顺序相加、不会互相抵扣的关系。详细的源码依据和实测数据见
+[`docs/rebalance-analysis.md`](docs/rebalance-analysis.md) 场景五章节。
+
+## 五场景实测日志与风险分析
+
+`docs/` 目录下保存了五个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+
+- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log) / [`docs/scenario4.log`](docs/scenario4.log) / [`docs/scenario5.log`](docs/scenario5.log)：五次真实运行的完整日志备份
 - [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)：逐场景分析 rebalance 触发过程，
   并总结对业务操作的潜在风险（消息重复处理、消费延迟堆积、隐蔽的"看似合理配置"风险等）及缓解建议
 
@@ -213,6 +240,9 @@ docker compose ps
 
 # 场景四：下游临时不可用，指数退避重试最终成功，不触发 rebalance
 ./gradlew bootRun --args='--spring.profiles.active=scenario4'
+
+# 场景五：验证退避等待是否会扣除已消耗的处理时间
+./gradlew bootRun --args='--spring.profiles.active=scenario5'
 
 # 不指定 profile 时默认等价于 scenario1
 ./gradlew bootRun

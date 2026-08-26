@@ -1,0 +1,17 @@
+# 场景五：专用于验证一个关于 DefaultErrorHandler 退避计时的具体问题——
+#
+# "如果一次 poll 的消息处理已经耗费了 N 秒，然后抛出异常触发退避等待 M 秒，
+#  那么距离下一次重新调用 poll() 的实际间隔，是 M 秒，还是 (M-N) 秒？"
+#
+# 本场景让处理耗时 (4s) 明显小于 max.poll.interval.ms (20s)，确保这次实验
+# 只关注"退避计时是否独立于处理耗时"这一个变量，不会被 rebalance 干扰
+# （max.poll.interval.ms 设置得足够宽松，即使按最坏情况"处理耗时 + 完整退避时间"
+# 累加计算也不会超时）。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 20000
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
