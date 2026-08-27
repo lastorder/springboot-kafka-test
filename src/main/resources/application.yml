@@ -9,7 +9,7 @@ app:
 spring:
   application:
     name: kafka-rebalance-demo
-  # 默认激活场景一；可通过 --spring.profiles.active=scenario2 / scenario3 / scenario4 / scenario5 / scenario6 切换
+  # 默认激活场景一；可通过 --spring.profiles.active=scenario2 / scenario3 / scenario4 / scenario5 / scenario6 / scenario7 切换
   profiles:
     active: scenario1
   kafka:

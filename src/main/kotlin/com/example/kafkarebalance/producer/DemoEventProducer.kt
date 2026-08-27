@@ -14,7 +14,7 @@ import java.util.UUID
 /**
  * 应用启动后自动发送一批演示事件到 Kafka。
  *
- * 根据当前激活的 Spring Profile（scenario1~6）采用不同的
+ * 根据当前激活的 Spring Profile（scenario1~7）采用不同的
  * 发送策略，以配合各自监听器演示不同成因（或不触发）consumer group rebalance 的场景。
  */
 @Component
@@ -37,7 +37,8 @@ class DemoEventProducer(
                 Scenario.SCENARIO3 -> sendScenario3Events()
                 Scenario.SCENARIO4 -> sendScenario4Events()
                 Scenario.SCENARIO5 -> sendScenario5Events()
-                Scenario.SCENARIO6 -> sendScenario6Events()
+                Scenario.SCENARIO6 -> sendMultiTopicEvents("scenario6")
+                Scenario.SCENARIO7 -> sendMultiTopicEvents("scenario7")
                 else -> sendScenario1Events()
             }
         }.apply {
@@ -152,19 +153,24 @@ class DemoEventProducer(
     }
 
     /**
-     * 场景六：同时向 slow-events 和 other-events 两个 topic 发送消息（同一个 consumer group 消费）。
+     * 场景六、七共用：同时向 slow-events 和 other-events 两个 topic 发送消息
+     * （同一个 consumer group 消费）。两个场景的发送逻辑完全一致，唯一变量是
+     * 监听器实现方式（场景六用一个多 topic `@KafkaListener`，场景七拆分成两个
+     * 各自独立的 `@KafkaListener`），这样两次实测结果可以直接对照。
      *
      * - 后台持续、稳定地向 other-events 发送正常消息（每 500ms 一条，持续
      *   [SCENARIO6_OTHER_DURATION_MS] 毫秒），模拟"另一个 topic 的正常业务流量"，
      *   用于在日志中观察它是否会因为 slow-events 触发的 rebalance 而出现处理中断/空窗。
      * - 延迟一段时间后向 slow-events 发送 1 条 slow=true 的消息，触发该 consumer
      *   因处理超时被踢出组，进而触发 rebalance。
+     *
+     * @param logPrefix 日志前缀（"scenario6" 或 "scenario7"），仅用于区分日志来源，不影响行为
      */
-    private fun sendScenario6Events() {
+    private fun sendMultiTopicEvents(logPrefix: String) {
         log.info(
-            "[scenario6] 开始向 other-events 持续发送正常消息（每 {}ms 一条，持续 {}ms），" +
+            "[{}] 开始向 other-events 持续发送正常消息（每 {}ms 一条，持续 {}ms），" +
                 "并计划在 {}ms 后向 slow-events 发送一条 slow=true 消息以触发 rebalance",
-            SCENARIO6_OTHER_INTERVAL_MS, SCENARIO6_OTHER_DURATION_MS, SCENARIO6_SLOW_TRIGGER_DELAY_MS
+            logPrefix, SCENARIO6_OTHER_INTERVAL_MS, SCENARIO6_OTHER_DURATION_MS, SCENARIO6_SLOW_TRIGGER_DELAY_MS
         )
 
         val otherEventsThread = Thread {
@@ -176,9 +182,9 @@ class DemoEventProducer(
                 index++
                 Thread.sleep(SCENARIO6_OTHER_INTERVAL_MS)
             }
-            log.info("[scenario6] other-events 持续发送线程结束，共发送 {} 条消息", index)
+            log.info("[{}] other-events 持续发送线程结束，共发送 {} 条消息", logPrefix, index)
         }.apply {
-            name = "scenario6-other-events-producer"
+            name = "$logPrefix-other-events-producer"
             isDaemon = true
         }
         otherEventsThread.start()
@@ -186,10 +192,10 @@ class DemoEventProducer(
         Thread.sleep(SCENARIO6_SLOW_TRIGGER_DELAY_MS)
         val slowEvent = newEvent(0, slow = true)
         send(slowEvent, SCENARIO2_FIXED_KEY, targetTopic = topic)
-        log.info("[scenario6] 已向 slow-events 发送 1 条 slow=true 消息，预期将触发 rebalance")
+        log.info("[{}] 已向 slow-events 发送 1 条 slow=true 消息，预期将触发 rebalance", logPrefix)
 
         otherEventsThread.join()
-        log.info("[scenario6] 全部演示消息发送完毕")
+        log.info("[{}] 全部演示消息发送完毕", logPrefix)
     }
 
     private fun resolveActiveScenario(): Scenario {
@@ -200,11 +206,12 @@ class DemoEventProducer(
             activeProfiles.contains("scenario4") -> Scenario.SCENARIO4
             activeProfiles.contains("scenario5") -> Scenario.SCENARIO5
             activeProfiles.contains("scenario6") -> Scenario.SCENARIO6
+            activeProfiles.contains("scenario7") -> Scenario.SCENARIO7
             else -> Scenario.SCENARIO1
         }
     }
 
-    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4, SCENARIO5, SCENARIO6 }
+    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4, SCENARIO5, SCENARIO6, SCENARIO7 }
 
     companion object {
         private const val SCENARIO1_MESSAGE_COUNT = 12

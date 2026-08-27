@@ -18,12 +18,13 @@ class KafkaTopicConfig {
             .build()
 
     /**
-     * 场景六专用：第二个 topic，与 `slow-events` 由**同一个 consumer group** 消费。
-     * 用于验证"其中一个 topic 的消息处理异常触发 rebalance 时，是否会影响
-     * 同一 consumer group 内、正在正常消费的另一个 topic"。
+     * 场景六、七专用：第二个 topic，与 `slow-events` 由**同一个 consumer group** 消费。
+     * 场景六用于验证"一个多 topic `@KafkaListener` 中，一个 topic 触发 rebalance
+     * 是否会牵连另一个 topic"；场景七用于验证"拆分成两个各自独立的
+     * `@KafkaListener`（仍共享 groupId）后，是否能避免这种牵连"。
      */
     @Bean
-    @Profile("scenario6")
+    @Profile("scenario6", "scenario7")
     fun otherEventsTopic(@Value("\${app.kafka.other-topic:other-events}") topicName: String): NewTopic =
         TopicBuilder.name(topicName)
             .partitions(3)

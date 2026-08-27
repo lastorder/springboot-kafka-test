@@ -1,0 +1,15 @@
+# 场景七：验证"把场景六的单个多 topic @KafkaListener 拆分为两个各自独立的
+# @KafkaListener（每个只监听一个 topic，但共享同一个 groupId）"，
+# 是否能让一个 topic 的 rebalance 不再牵连另一个 topic。
+#
+# 配置与场景六完全一致（同样的 max.poll.interval.ms、同样的触发机制），
+# 唯一变量是监听器实现方式（一个多 topic @KafkaListener vs. 两个独立
+# @KafkaListener），便于直接对照两次实测结果。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 6000
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000
