@@ -14,14 +14,15 @@ import java.util.UUID
 /**
  * 应用启动后自动发送一批演示事件到 Kafka。
  *
- * 根据当前激活的 Spring Profile（scenario1~5）采用不同的
+ * 根据当前激活的 Spring Profile（scenario1~6）采用不同的
  * 发送策略，以配合各自监听器演示不同成因（或不触发）consumer group rebalance 的场景。
  */
 @Component
 class DemoEventProducer(
     private val kafkaTemplate: KafkaTemplate<String, DemoEvent>,
     private val environment: Environment,
-    @Value("\${app.kafka.topic}") private val topic: String
+    @Value("\${app.kafka.topic}") private val topic: String,
+    @Value("\${app.kafka.other-topic:other-events}") private val otherTopic: String
 ) : ApplicationRunner {
 
     private val log = LoggerFactory.getLogger(DemoEventProducer::class.java)
@@ -36,6 +37,7 @@ class DemoEventProducer(
                 Scenario.SCENARIO3 -> sendScenario3Events()
                 Scenario.SCENARIO4 -> sendScenario4Events()
                 Scenario.SCENARIO5 -> sendScenario5Events()
+                Scenario.SCENARIO6 -> sendScenario6Events()
                 else -> sendScenario1Events()
             }
         }.apply {
@@ -96,11 +98,11 @@ class DemoEventProducer(
         log.info("[scenario3] 全部演示消息发送完毕")
     }
 
-    private fun send(event: DemoEvent, key: String) {
-        kafkaTemplate.send(topic, key, event)
+    private fun send(event: DemoEvent, key: String, targetTopic: String = topic) {
+        kafkaTemplate.send(targetTopic, key, event)
         log.info(
-            "已发送消息 id={} key={} slow={} retryTrigger={} flaky={}",
-            event.id, key, event.slow, event.retryTrigger, event.flaky
+            "已发送消息 id={} topic={} key={} slow={} retryTrigger={} flaky={}",
+            event.id, targetTopic, key, event.slow, event.retryTrigger, event.flaky
         )
     }
 
@@ -149,6 +151,47 @@ class DemoEventProducer(
         log.info("[scenario5] 消息发送完毕")
     }
 
+    /**
+     * 场景六：同时向 slow-events 和 other-events 两个 topic 发送消息（同一个 consumer group 消费）。
+     *
+     * - 后台持续、稳定地向 other-events 发送正常消息（每 500ms 一条，持续
+     *   [SCENARIO6_OTHER_DURATION_MS] 毫秒），模拟"另一个 topic 的正常业务流量"，
+     *   用于在日志中观察它是否会因为 slow-events 触发的 rebalance 而出现处理中断/空窗。
+     * - 延迟一段时间后向 slow-events 发送 1 条 slow=true 的消息，触发该 consumer
+     *   因处理超时被踢出组，进而触发 rebalance。
+     */
+    private fun sendScenario6Events() {
+        log.info(
+            "[scenario6] 开始向 other-events 持续发送正常消息（每 {}ms 一条，持续 {}ms），" +
+                "并计划在 {}ms 后向 slow-events 发送一条 slow=true 消息以触发 rebalance",
+            SCENARIO6_OTHER_INTERVAL_MS, SCENARIO6_OTHER_DURATION_MS, SCENARIO6_SLOW_TRIGGER_DELAY_MS
+        )
+
+        val otherEventsThread = Thread {
+            var index = 0
+            val deadline = System.currentTimeMillis() + SCENARIO6_OTHER_DURATION_MS
+            while (System.currentTimeMillis() < deadline) {
+                val event = newEvent(index, slow = false)
+                send(event, SCENARIO2_FIXED_KEY, targetTopic = otherTopic)
+                index++
+                Thread.sleep(SCENARIO6_OTHER_INTERVAL_MS)
+            }
+            log.info("[scenario6] other-events 持续发送线程结束，共发送 {} 条消息", index)
+        }.apply {
+            name = "scenario6-other-events-producer"
+            isDaemon = true
+        }
+        otherEventsThread.start()
+
+        Thread.sleep(SCENARIO6_SLOW_TRIGGER_DELAY_MS)
+        val slowEvent = newEvent(0, slow = true)
+        send(slowEvent, SCENARIO2_FIXED_KEY, targetTopic = topic)
+        log.info("[scenario6] 已向 slow-events 发送 1 条 slow=true 消息，预期将触发 rebalance")
+
+        otherEventsThread.join()
+        log.info("[scenario6] 全部演示消息发送完毕")
+    }
+
     private fun resolveActiveScenario(): Scenario {
         val activeProfiles = environment.activeProfiles
         return when {
@@ -156,11 +199,12 @@ class DemoEventProducer(
             activeProfiles.contains("scenario3") -> Scenario.SCENARIO3
             activeProfiles.contains("scenario4") -> Scenario.SCENARIO4
             activeProfiles.contains("scenario5") -> Scenario.SCENARIO5
+            activeProfiles.contains("scenario6") -> Scenario.SCENARIO6
             else -> Scenario.SCENARIO1
         }
     }
 
-    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4, SCENARIO5 }
+    private enum class Scenario { SCENARIO1, SCENARIO2, SCENARIO3, SCENARIO4, SCENARIO5, SCENARIO6 }
 
     companion object {
         private const val SCENARIO1_MESSAGE_COUNT = 12
@@ -175,5 +219,9 @@ class DemoEventProducer(
 
         private const val SCENARIO4_MESSAGE_COUNT = 3
         private const val SCENARIO4_FLAKY_INDEX = 1
+
+        private const val SCENARIO6_OTHER_INTERVAL_MS = 500L
+        private const val SCENARIO6_OTHER_DURATION_MS = 30_000L
+        private const val SCENARIO6_SLOW_TRIGGER_DELAY_MS = 5_000L
     }
 }

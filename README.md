@@ -19,11 +19,11 @@
 src/main/kotlin/com/example/kafkarebalance/
 ├── KafkaRebalanceDemoApplication.kt        # 启动类
 ├── config/
-│   ├── KafkaTopicConfig.kt                 # 声明 3 分区的 slow-events topic（五场景通用）
+│   ├── KafkaTopicConfig.kt                 # 声明 slow-events（+ 场景六额外的 other-events）topic
 │   ├── Scenario3ErrorHandlerConfig.kt      # 场景三：固定间隔阻塞式重试 ErrorHandler（@Profile("scenario3")）
 │   ├── Scenario4ErrorHandlerConfig.kt      # 场景四：指数退避重试 ErrorHandler（@Profile("scenario4")）
 │   └── Scenario5ErrorHandlerConfig.kt      # 场景五：固定退避 ErrorHandler，用于验证退避计时（@Profile("scenario5")）
-├── model/DemoEvent.kt                      # 事件数据模型（五场景通用）
+├── model/DemoEvent.kt                      # 事件数据模型（六场景通用）
 ├── producer/DemoEventProducer.kt           # 根据激活的 profile 采用不同发送策略
 └── listener/
     ├── SlowEventListener.kt                # 场景一：单条处理过慢（@Profile("scenario1")）
@@ -31,6 +31,7 @@ src/main/kotlin/com/example/kafkarebalance/
     ├── RetryProneEventListener.kt          # 场景三：阻塞式重试导致超时（@Profile("scenario3")）
     ├── FlakyDownstreamEventListener.kt     # 场景四：下游临时不可用，指数退避最终成功（@Profile("scenario4")）
     ├── BackoffTimingEventListener.kt       # 场景五：验证退避等待是否扣除处理耗时（@Profile("scenario5")）
+    ├── MultiTopicRebalanceListener.kt      # 场景六：同一 consumer 订阅多 topic 的相互影响（@Profile("scenario6")）
     └── TransientProcessingException.kt     # 场景三、四、五共用的可重试异常
 src/main/resources/
 ├── application.yml                         # 公共配置（topic、序列化、默认 profile=scenario1）
@@ -39,15 +40,17 @@ src/main/resources/
 ├── application-scenario3.yml               # 场景三专属 Kafka 消费者配置
 ├── application-scenario4.yml               # 场景四专属 Kafka 消费者配置
 ├── application-scenario5.yml               # 场景五专属 Kafka 消费者配置
+├── application-scenario6.yml               # 场景六专属 Kafka 消费者配置
 └── logback-spring.xml                      # 日志配置，重点开启 rebalance 相关 logger
 ```
 
-## 五种 Rebalance 演示场景
+## 六种 Rebalance 演示场景
 
-本项目通过 Spring Profile（`scenario1` ~ `scenario5`）切换五套独立的消费者配置 +
+本项目通过 Spring Profile（`scenario1` ~ `scenario6`）切换六套独立的消费者配置 +
 监听器实现：前三种演示导致 consumer group rebalance 的常见成因，第四种演示如何通过
-合理配置**避免**触发 rebalance，第五种专门用于精确回答一个关于重试计时的细节问题
-（详见下文）。默认（不指定 profile）激活 `scenario1`。
+合理配置**避免**触发 rebalance，第五种专门用于精确回答一个关于重试计时的细节问题，
+第六种验证同一 consumer group 消费多个 topic 时的相互影响（详见下文）。
+默认（不指定 profile）激活 `scenario1`。
 
 | 场景 | max.poll.records | max.poll.interval.ms | 触发机制 | 启动命令 |
 |------|-------------------|------------------------|----------|----------|
@@ -56,6 +59,7 @@ src/main/resources/
 | 场景三 | 10 | 8000 | 整体配置合理（10 条累计仅 2000ms），但阻塞式重试的**单次**等待时间超过阈值 | `./gradlew bootRun --args='--spring.profiles.active=scenario3'` |
 | 场景四 | 1 | 6000（本地压缩版） | 下游临时不可用，指数退避重试（单次等待始终小于阈值），最终成功且**不触发** rebalance | `./gradlew bootRun --args='--spring.profiles.active=scenario4'` |
 | 场景五 | 1 | 20000（刻意放宽） | 精确测量"处理耗时 + 退避等待"的时间关系，验证退避时间是否扣除已消耗的处理时间 | `./gradlew bootRun --args='--spring.profiles.active=scenario5'` |
+| 场景六 | 1 | 6000 | 同一 consumer 同时订阅 `slow-events`+`other-events`；验证一个 topic 触发 rebalance 是否牵连另一个 topic | `./gradlew bootRun --args='--spring.profiles.active=scenario6'` |
 
 ### 场景一：单条消息处理过慢（`SlowEventListener`）
 
@@ -199,11 +203,39 @@ spring.kafka.consumer.properties:
 两者是顺序相加、不会互相抵扣的关系。详细的源码依据和实测数据见
 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md) 场景五章节。
 
-## 五场景实测日志与风险分析
+### 场景六：同一 consumer group 消费多个 topic 的相互影响（`MultiTopicRebalanceListener`）
 
-`docs/` 目录下保存了五个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+这个场景回答一个常见的架构疑问：**"如果同一个 consumer group 同时消费多个 topic，
+其中一个 topic 的消息处理异常导致了 rebalance，会不会影响另一个 topic 的消费？"**
 
-- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log) / [`docs/scenario4.log`](docs/scenario4.log) / [`docs/scenario5.log`](docs/scenario5.log)：五次真实运行的完整日志备份
+`MultiTopicRebalanceListener` 只用**一个** `@KafkaListener` 方法，但 `topics`
+属性同时列出 `slow-events` 和 `other-events`——这让同一个 `KafkaConsumer` 真正
+同时订阅两个 topic（而不是用两个各自独立的 `@KafkaListener` 分别订阅一个 topic）。
+`DemoEventProducer` 在该场景下会持续向 `other-events` 发送正常消息，同时向
+`slow-events` 发送 1 条会触发 10 秒阻塞的消息。
+
+**实测结论：会影响，而且是"全部 topic 一起被牵连"**。`slow-events` 的慢消息触发
+rebalance 时，`other-events`（自身完全健康）也被一并 revoke、一并重新分配，
+实测消费中断约 **10.4 秒**：
+
+```
+partitions revoked: [other-events-0, other-events-1, other-events-2, slow-events-0, slow-events-1, slow-events-2]
+```
+
+**根因**（详见 [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md) 场景六章节的
+完整源码分析）：Kafka 默认的 `partition.assignment.strategy=[RangeAssignor, CooperativeStickyAssignor]`
+取交集后，rebalance 协议被锁定为 **EAGER**；EAGER 协议下 `ConsumerCoordinator#onJoinPrepare`
+会无条件 revoke 该 consumer **当前订阅的全部 topic** 的分区，不区分是哪个 topic
+导致了这次重新加入组。若显式配置 `partition.assignment.strategy` 只使用
+`CooperativeStickyAssignor`，可以切换到 COOPERATIVE 协议，减少无关 topic 被牵连的概率；
+也可以在应用层为不同重要性的 topic 使用不同的 `@KafkaListener`（各自独立 consumer 实例）
+从根本上避免这种耦合。
+
+## 六场景实测日志与风险分析
+
+`docs/` 目录下保存了六个场景各自的一次完整运行日志，以及一份基于这些日志的详细分析文档：
+
+- [`docs/scenario1.log`](docs/scenario1.log) / [`docs/scenario2.log`](docs/scenario2.log) / [`docs/scenario3.log`](docs/scenario3.log) / [`docs/scenario4.log`](docs/scenario4.log) / [`docs/scenario5.log`](docs/scenario5.log) / [`docs/scenario6.log`](docs/scenario6.log)：六次真实运行的完整日志备份
 - [`docs/rebalance-analysis.md`](docs/rebalance-analysis.md)：逐场景分析 rebalance 触发过程，
   并总结对业务操作的潜在风险（消息重复处理、消费延迟堆积、隐蔽的"看似合理配置"风险等）及缓解建议
 
@@ -243,6 +275,9 @@ docker compose ps
 
 # 场景五：验证退避等待是否会扣除已消耗的处理时间
 ./gradlew bootRun --args='--spring.profiles.active=scenario5'
+
+# 场景六：验证同一 consumer group 消费多个 topic 的相互影响
+./gradlew bootRun --args='--spring.profiles.active=scenario6'
 
 # 不指定 profile 时默认等价于 scenario1
 ./gradlew bootRun

@@ -1,0 +1,14 @@
+# 场景六：验证"同一个 consumer group 内的同一个 consumer 同时订阅多个 topic 时，
+# 其中一个 topic 触发 rebalance，是否会影响另一个 topic 的消费"。
+#
+# 复用场景一的触发机制（单条消息处理 10s，直接超过 max.poll.interval.ms=6000ms），
+# 但本场景的 consumer 同时订阅 slow-events 和 other-events 两个 topic
+# （见 MultiTopicRebalanceListener，topics 属性列出了两个 topic 名）。
+spring:
+  kafka:
+    consumer:
+      properties:
+        max.poll.interval.ms: 6000
+        max.poll.records: 1
+        session.timeout.ms: 10000
+        heartbeat.interval.ms: 3000

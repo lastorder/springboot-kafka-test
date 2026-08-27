@@ -1,20 +1,24 @@
 # Kafka Consumer Group Rebalance 场景日志分析报告
 
 本报告基于 `docs/scenario1.log`、`docs/scenario2.log`、`docs/scenario3.log`、`docs/scenario4.log`、
-`docs/scenario5.log` 五次真实本地运行（Spring Boot 4.0.4、spring-kafka 4.0.4、
-Kafka 4.1.2 broker、单节点 KRaft，通过 `docker compose` 本地启动）产生的日志，
-逐一分析每种场景下 rebalance 的触发过程（或不触发的原因），并总结对业务的潜在风险。
+`docs/scenario5.log`、`docs/scenario6.log` 六次真实本地运行（Spring Boot 4.0.4、
+spring-kafka 4.0.4、Kafka 4.1.2 broker、单节点 KRaft，通过 `docker compose` 本地启动）
+产生的日志，逐一分析每种场景下 rebalance 的触发过程（或不触发的原因），并总结对业务的潜在风险。
 
-> 复现环境：单实例（只有 1 个 consumer）加入 `slow-consumer-group`。由于组内只有一个成员，
-> 每次 rebalance 实际表现为"该成员被踢出 → 重新 JoinGroup → 重新拿回全部分区"，
-> 不会像多实例场景那样把分区转移给别的存活实例。但触发条件、日志特征、以及对
-> **消息处理与 offset 提交**的影响，与多实例场景完全一致，因此结论同样适用于生产环境的多实例部署。
+> 复现环境：场景一~五均为单实例（只有 1 个 consumer）加入 `slow-consumer-group`。
+> 由于组内只有一个成员，每次 rebalance 实际表现为"该成员被踢出 → 重新 JoinGroup →
+> 重新拿回全部分区"，不会像多实例场景那样把分区转移给别的存活实例。但触发条件、
+> 日志特征、以及对**消息处理与 offset 提交**的影响，与多实例场景完全一致，因此结论
+> 同样适用于生产环境的多实例部署。场景六在单实例基础上引入了**第二个 topic**，
+> 用于验证同一 consumer group 消费多 topic 时的相互影响，详见场景六章节。
 
-> 五个场景中，场景一、二、三演示的是**会触发 rebalance** 的三种不同成因；
+> 六个场景中，场景一、二、三演示的是**会触发 rebalance** 的三种不同成因；
 > 场景四是**不触发 rebalance** 的正面案例——通过合理配置指数退避的单次等待上限，
 > 即便下游服务临时不可用、需要重试很多次、总耗时很长，也能安全完成重试而不影响消费组稳定性；
-> 场景五则专门用于回答一个更细节的计时问题："如果处理已经花费了一部分时间才失败，
-> 退避等待是否会扣除这部分已耗费的时间？"（答案见场景五章节）。
+> 场景五专门用于回答一个更细节的计时问题："如果处理已经花费了一部分时间才失败，
+> 退避等待是否会扣除这部分已耗费的时间？"（答案见场景五章节）；
+> 场景六则回答"同一个 consumer group 消费多个 topic 时，一个 topic 的异常是否会
+> 影响另一个 topic"这一架构层面的问题（答案见场景六章节）。
 
 ---
 
@@ -419,9 +423,185 @@ public void onNextBackOff(MessageListenerContainer container, Exception exceptio
 
 ---
 
+## 场景六：同一 consumer group 消费多个 topic 时，一个 topic 的异常是否会影响另一个 topic？（`docs/scenario6.log`）
+
+### 提出的问题
+
+生产环境中很常见的部署方式是：一个应用用**同一个 consumer group** 同时消费多个 topic
+（例如 `order-events` 和 `notification-events`）。如果其中一个 topic（比如
+`order-events`）因为消息处理异常触发了 rebalance，**同一个 consumer group 里
+正在正常消费的另一个 topic（`notification-events`）会不会也被牵连、出现短暂的
+消费中断？**
+
+### 实验设计
+
+关键实现细节（详见 [`MultiTopicRebalanceListener.kt`](../src/main/kotlin/com/example/kafkarebalance/listener/MultiTopicRebalanceListener.kt)
+的类注释）：本场景**只用一个** `@KafkaListener` 方法，但 `topics` 属性同时列出
+`slow-events` 和 `other-events` 两个 topic 名。这一点很重要——如果分别用两个
+`@KafkaListener` 方法各自监听一个 topic（哪怕 `groupId` 相同），Spring Kafka 会
+为每个方法创建**各自独立的 `KafkaConsumer`**，每个 consumer 的 `subscribe()` 调用
+只包含它自己的那一个 topic，不会构成"单个 consumer 同时订阅多个 topic"的场景。
+只有像本场景这样让同一个 `@KafkaListener`（对应同一个 `KafkaMessageListenerContainer`
+和同一个 `KafkaConsumer` 实例）在 `topics` 属性里列出多个 topic 名，才会调用
+`consumer.subscribe(Arrays.asList("slow-events", "other-events"), rebalanceListener)`，
+让一个 consumer 真正同时订阅两个 topic——这也正是本场景要验证的、生产环境中
+"一个消费者应用用同一个 group 订阅多个 topic"的真实情形。
+
+### 配置与运行方式
+
+- `application-scenario6.yml` 复用场景一的触发阈值：`max.poll.interval.ms=6000`，
+  `max.poll.records=1`
+- `DemoEventProducer` 启动后：
+  1. 后台线程每 500ms 向 `other-events` 发送 1 条正常消息，持续 30 秒，
+     模拟"另一个 topic 的正常业务流量"
+  2. 5 秒后向 `slow-events` 发送 1 条 `slow=true` 的消息，触发处理阻塞 10 秒，
+     超过 `max.poll.interval.ms=6000ms`，从而触发该 consumer 被踢出组
+
+### 实测结果（`docs/scenario6.log`）
+
+启动阶段，一个 consumer 同时拿到两个 topic 的全部分区：
+
+```
+Adding newly assigned partitions: [other-events-0, other-events-1, other-events-2, slow-events-0, slow-events-1, slow-events-2]
+```
+
+`other-events` 开始以约 500ms 间隔稳定消费（`11:44:03.219` ~ `11:44:07.658`），
+与此同时 `slow-events` 收到那条 `slow=true` 消息并开始阻塞处理
+（`11:44:08.041`）。**从这一刻起，`other-events` 的消费也随之停止**：
+
+```
+11:44:07.658  收到消息 ... topic=other-events （最后一条，rebalance 前）
+11:44:08.041  收到消息 ... topic=slow-events slow=true （开始阻塞 10s）
+11:44:13.860  WARN  consumer poll timeout has expired
+11:44:13.861  INFO  Member ... sending LeaveGroup request ... due to consumer poll timeout has expired
+11:44:18.053  INFO  partitions revoked: [other-events-0, other-events-1, other-events-2, slow-events-0, slow-events-1, slow-events-2]
+11:44:18.071  INFO  Adding newly assigned partitions: [other-events-0, other-events-1, other-events-2, slow-events-0, slow-events-1, slow-events-2]
+11:44:18.082  收到消息 ... topic=other-events （恢复消费，第一条）
+```
+
+**`other-events` 的消费中断了约 10.4 秒（`18.082 - 07.658`）**，而这段时间里
+`other-events` 本身没有任何异常、没有任何处理耗时问题——它的中断完全是由
+`slow-events` 那条无关的慢消息引起的。而且 `partitions revoked` 日志明确列出了
+**两个 topic 的全部 6 个分区**，而不仅仅是 `slow-events` 的 3 个分区。
+
+这个"消费中断 → 全部 6 分区一起 revoke → 全部 6 分区一起重新分配"的循环
+在实测中重复了 **15 次**（`grep -c "partitions revoked" docs/scenario6.log` = 15）
+——因为该 `slow=true` 消息始终无法成功提交 offset（与场景一相同的"毒消息"机制），
+每一轮的两个 topic 6 个分区都会被一起 revoke、一起重新分配，逐字节完全一致：
+
+```bash
+$ grep "partitions revoked" docs/scenario6.log | sed -E 's/.*partitions revoked: //' | sort -u
+[other-events-0, other-events-1, other-events-2, slow-events-0, slow-events-1, slow-events-2]
+```
+
+（15 次 revoke 的分区集合**完全相同**，没有任何一次只 revoke 了部分 topic 的分区。）
+
+### 结论：会影响，而且是"全部 topic 一起被牵连"
+
+**同一个 consumer group 内的同一个 consumer 同时订阅多个 topic 时，只要其中一个
+topic 的消息处理触发了 rebalance，该 consumer 当前订阅的其余所有 topic 的分区
+也会被一并 revoke、一并重新分配——即便这些 topic 自身的消费完全正常，也会经历
+一次"消费中断 + 重新加入组"的过程。**
+
+### 源码依据：为什么会这样？（Kafka Client 关键设计）
+
+阅读 Kafka Client 4.1.2 的 `org.apache.kafka.clients.consumer.internals.ConsumerCoordinator`
+源码，可以定位到两处决定性的设计：
+
+**1. Rebalance 协议的选择（构造函数中）**
+
+```java
+// ConsumerCoordinator 构造函数
+if (!assignors.isEmpty()) {
+    List<RebalanceProtocol> supportedProtocols = new ArrayList<>(assignors.get(0).supportedProtocols());
+    for (ConsumerPartitionAssignor assignor : assignors) {
+        supportedProtocols.retainAll(assignor.supportedProtocols());   // 取交集
+    }
+    Collections.sort(supportedProtocols);
+    protocol = supportedProtocols.get(supportedProtocols.size() - 1); // 取交集中最高级的协议
+}
+```
+
+`RebalanceProtocol` 枚举定义为 `EAGER(0), COOPERATIVE(1)`（数值越大越"高级"）。
+`partition.assignment.strategy` 默认值是 `[RangeAssignor, CooperativeStickyAssignor]`
+（已通过实际运行 `ConsumerConfig.configDef()` 核实，见下方默认值附录）。而
+`RangeAssignor` 并未重写 `supportedProtocols()`，因此使用接口默认值
+`Collections.singletonList(RebalanceProtocol.EAGER)`——只支持 `EAGER`。
+`CooperativeStickyAssignor` 支持 `[COOPERATIVE, EAGER]`。两者取交集结果是
+`[EAGER]`，因此**默认情况下选定的 rebalance 协议就是 EAGER**（这不是巧合，
+而是只要 assignor 列表里包含任何一个只支持 EAGER 的分配器，交集就必然退化为 EAGER；
+`RangeAssignor` 排在默认列表首位，天然把整体协议锁定为 EAGER）。
+
+**2. EAGER 协议下 `onJoinPrepare` 的无条件全量 revoke**
+
+```java
+// ConsumerCoordinator#onJoinPrepare
+switch (protocol) {
+    case EAGER:
+        // revoke all partitions
+        revokedPartitions.addAll(subscriptions.assignedPartitions());
+        exception = rebalanceListenerInvoker.invokePartitionsRevoked(revokedPartitions);
+        subscriptions.assignFromSubscribed(Collections.emptySet());
+        break;
+
+    case COOPERATIVE:
+        // only revoke those partitions that are not in the subscription anymore.
+        Set<TopicPartition> ownedPartitions = new HashSet<>(subscriptions.assignedPartitions());
+        revokedPartitions.addAll(ownedPartitions.stream()
+            .filter(tp -> !subscriptions.subscription().contains(tp.topic()))
+            .collect(Collectors.toSet()));
+        ...
+}
+```
+
+这里的 `subscriptions.assignedPartitions()` 是该 **consumer 实例**（不是某个 topic）
+当前已分配的**全部分区**——只要这个 consumer 同时订阅了 `slow-events` 和
+`other-events`，这个集合就同时包含两个 topic 的分区。`EAGER` 分支的逻辑是
+"不管三七二十一，先把手上所有分区全部吐出来"，因此触发条件只需要"这个 consumer
+需要重新加入组"，而不关心"是哪个 topic 导致了这次重新加入"——这就是本场景实测
+中"两个 topic 的分区总是一起被 revoke"的根本原因。
+
+`COOPERATIVE` 分支则完全不同：只 revoke "已拥有但不再属于当前订阅"的分区
+（`!subscriptions.subscription().contains(tp.topic())`）。如果两个 topic 都仍在
+订阅列表里、且分配算法（如 `CooperativeStickyAssignor`）判断当前分配依然合理，
+这个 revoke 集合可以是空的——也就是说在 `COOPERATIVE` 协议下，一次"因为某个
+topic 处理慢导致的重新加入组"未必会导致*任何* topic 的分区被 revoke（取决于
+分配算法的计算结果），或者即便发生 revoke，也大概率只涉及需要重新平衡的那部分
+分区，而不是无条件牵连全部订阅的 topic。
+
+### 配置分析：哪些配置项会影响这个行为？
+
+| 配置项 | 作用位置 | 对本问题的影响 |
+|---|---|---|
+| `spring.kafka.consumer.properties.partition.assignment.strategy` | Consumer | **决定性因素**。默认 `[RangeAssignor, CooperativeStickyAssignor]` → 协议交集为 `EAGER` → 触发"全部 topic 一起 revoke"。若显式设置为 `org.apache.kafka.clients.consumer.CooperativeStickyAssignor`（只保留这一个，且不与任何仅支持 EAGER 的分配器混用），协议交集将变为 `[COOPERATIVE, EAGER]` 排序后取最高级即 `COOPERATIVE`，可以避免/减少无关 topic 被牵连 |
+| `spring.kafka.consumer.properties.group.protocol` | Consumer | Kafka 2.8+ 引入的新一代消费者组协议（KIP-848，`classic` 或 `consumer`）。默认 `classic`（即本文档全部实验采用的传统协议栈）。设置为 `consumer` 会启用全新的服务端驱动的增量再均衡协议，从架构上就是增量分配、不会有"整体 EAGER revoke"的概念，但需要 broker 版本支持且是较新的特性，生产环境启用前需要充分验证 |
+| `max.poll.interval.ms` / 处理耗时 / 重试退避时间 | Consumer | 不影响"是否会牵连其它 topic"，只影响"多久会触发一次这样的 rebalance"（详见前面场景一~五及"通用结论"章节） |
+| Topic 是否共用同一个 `@KafkaListener`（即是否属于同一个 `KafkaConsumer` 实例的订阅集合） | 应用层设计 | 如果两个 topic 分别用**不同**的 `@KafkaListener` 方法监听（即便 `groupId` 相同），则它们是同一 consumer group 里的**两个独立 consumer 成员**，各自只订阅自己的 topic。这种情况下，一个 consumer 因处理慢被踢出组，只会导致**它自己订阅的那个 topic** 的分区被 revoke 并重新分配给组内其他能正常工作的 consumer（如果有），**不会**直接导致另一个 topic 的 consumer 也发生 revoke——因为它们是两个独立的 `KafkaConsumer.subscribe()` 调用，不共享 `subscriptions.assignedPartitions()` 集合。这是规避本场景问题的一种应用层设计方案（见下方"如何缓解"） |
+
+### 如何缓解"一个 topic 的问题影响其它 topic"
+
+结合上面的源码与配置分析，有两种思路：
+
+1. **应用层拆分**：如果多个 topic 的业务重要性/稳定性要求不同，避免让同一个
+   `@KafkaListener`（同一个 consumer 实例）同时订阅多个 topic；改为每个 topic
+   使用独立的 `@KafkaListener` 方法（即便共享同一个 `groupId`），这样它们在
+   Kafka 协议层面就是彼此独立的订阅关系，一个 topic 的消费者被踢出组不会直接
+   波及另一个 topic 的消费者（虽然仍共享同一个 consumer group 的 group
+   coordinator，但不共享同一个 consumer 实例的 `assignedPartitions()`）。
+2. **切换到 COOPERATIVE 协议**：将 `partition.assignment.strategy` 配置为
+   `org.apache.kafka.clients.consumer.CooperativeStickyAssignor`（且不要同时配置
+   仅支持 EAGER 的分配器，否则协议交集仍会退化为 EAGER），利用增量再均衡的特性，
+   减少"一个 consumer 需要重新加入组"时对其已拥有、且依然合理的其它 topic
+   分区的影响。这个改动对本项目其它场景（一~五）演示的"是否会触发 rebalance"
+   结论没有影响——`COOPERATIVE` 协议下，判断"是否需要重新加入组"的触发条件
+   （`max.poll.interval.ms` 超时）完全不变，改变的只是"重新加入组时具体
+   revoke 哪些分区"这一环节。
+
+---
+
 ## 通用结论：两次 poll 之间的间隔一旦超过 max.poll.interval.ms，就会触发 rebalance
 
-综合五个场景的实测数据，可以归纳出一条贯穿全部场景、能够互相印证的**通用规则**：
+综合六个场景的实测数据，可以归纳出一条贯穿全部场景、能够互相印证的**通用规则**：
 
 > **只要消费线程连续两次调用 `KafkaConsumer#poll()` 之间实际经过的时间超过了
 > `max.poll.interval.ms` 配置的阈值，就会触发一次 consumer group rebalance；
@@ -438,8 +618,9 @@ public void onNextBackOff(MessageListenerContainer container, Exception exceptio
 | 场景三 | 触发（6 次） | 单次退避等待 9000ms > 8000ms，退避期间不调用 poll，等待结束后才重新 poll，间隔本身已超标 | `docs/scenario3.log`：每次退避开始到下次 `Received: N records` 间隔约 9s |
 | 场景四 | **不触发**（0 次） | 单次退避等待最高 3000ms（封顶）< 6000ms，即使总共重试 4 次也每次都独立小于阈值 | `docs/scenario4.log`：`generation` 全程为 1，从未变化 |
 | 场景五 | 不触发（本场景 max.poll.interval.ms=20000 特意放宽） | 处理耗时(4s) + 退避(10s) = 14s < 20s，因此本场景本身也不会触发；但若换成 `max.poll.interval.ms=12000` 就会触发（14s > 12s） | `docs/scenario5.log`：可推算若阈值设为 12000ms 则必然超时 |
+| 场景六 | 触发（15 次，同场景一的机制） | 触发原因与场景一相同（单条消息处理 10s > 6s），但本场景验证的是"触发后波及的范围"而非"触发条件本身" | `docs/scenario6.log`：`slow-events` 单条消息导致超时，`other-events` 随之一起被 revoke |
 
-需要特别强调两个容易被误解的细节（均已通过实测确认）：
+需要特别强调三个容易被误解的细节（均已通过实测确认）：
 
 1. **"两次 poll 之间的间隔"指的是一次 `poll()` 返回、到消费线程处理完这批记录、
    再次调用下一次 `poll()` 为止的全部耗时**——包括正常业务处理、批量内逐条处理的总和、
@@ -451,11 +632,16 @@ public void onNextBackOff(MessageListenerContainer container, Exception exceptio
    也可能是"一次退避等待+若干次处理"，取决于该次 poll 拿到多少条记录）。
 2. 场景五进一步明确：**处理耗时和退避等待时间是顺序相加、不会互相抵扣的**，
    因此对照阈值时必须用"本段总耗时"（处理 + 退避），而非只看退避配置的数值本身。
+3. 场景六进一步明确：**触发 rebalance 的条件（"这段 poll 间隔是否超过阈值"）与
+   "触发后会影响哪些 topic"是两个独立的问题**。前者只取决于消费线程本身的行为，
+   与订阅了几个 topic 无关；后者则取决于 rebalance 协议——默认 EAGER 协议下，
+   一旦触发就会牵连该 consumer 当前订阅的**全部** topic，不区分"是谁导致的"。
 
 这条通用规则可以作为诊断生产环境 rebalance 问题的第一步：只要能够从日志中定位到
 "哪一段 poll 到 poll 之间的间隔超过了 `max.poll.interval.ms`"，就能确定 rebalance
-的直接触发原因，再结合本文档五个场景的成因分类，进一步定位到具体是"单条慢"、
-"批量大"、"重试退避超标"，还是其他导致该间隔过长的业务逻辑。
+的直接触发原因，再结合本文档六个场景的成因分类，进一步定位到具体是"单条慢"、
+"批量大"、"重试退避超标"，还是其他导致该间隔过长的业务逻辑；如果消费者同时订阅了
+多个 topic，还需要额外评估场景六揭示的"影响范围"问题。
 
 ---
 
@@ -488,11 +674,14 @@ public void onNextBackOff(MessageListenerContainer container, Exception exceptio
 的空窗期）。场景一、三中可以看到从触发超时到重新拿到分区，通常有 1~2 秒的空窗；
 如果是多分区、多实例的生产环境，加上更多消费者参与 rebalance（stop-the-world 式的
 `eager` 分配策略下，所有分区在 rebalance 期间对所有消费者都不可用），空窗期会更长。
-这会直接表现为：
-- 消息处理延迟（lag）在监控图表上出现突刺甚至持续增长；
+场景六进一步证明，**这个空窗期不仅限于触发问题的那个 topic**：默认 EAGER 协议下，
+同一个 consumer 订阅的其它 topic（哪怕自身完全健康）也会被一起纳入这段空窗期
+（实测中 `other-events` 出现了约 10.4 秒的消费中断，纯粹是被 `slow-events` 的
+慢消息"连坐"）。这会直接表现为：
+- 消息处理延迟（lag）在监控图表上出现突刺甚至持续增长，且可能是**多个 topic 同时**出现；
 - 下游依赖这些事件的业务（如库存扣减通知、订单状态流转）出现明显的处理滞后；
-- 如果 rebalance 像场景一那样反复发生，Lag 可能持续增长而不收敛，最终触发告警甚至
-  影响 SLA。
+- 如果 rebalance 像场景一/六那样反复发生，Lag 可能持续增长而不收敛，最终触发告警甚至
+  影响 SLA，并且告警可能来自表面上"毫无问题"的另一个 topic，增加排查难度。
 
 ### 3. 生产者/下游看到的"重复副作用"与幂等性缺失的组合风险
 
@@ -526,6 +715,21 @@ LeaveGroup 请求本身也会给 group coordinator（broker）带来额外负载
 （可监控 `kafka.consumer:type=consumer-coordinator-metrics` 下的
 `rebalance-total`、`rebalance-rate-per-hour` 等指标）。
 
+### 6. "一荣俱损"的爆炸半径：一个 topic 的问题拖累同一 consumer 订阅的所有 topic（场景六）
+
+场景六揭示了一个架构层面、容易被忽视的风险："同一个 consumer group 用同一个
+`KafkaConsumer` 同时订阅多个 topic"这种常见的应用设计方式，会让原本互不相关的
+多个业务（多个 topic）在故障隔离层面被**耦合在一起**。默认 EAGER 协议下，
+只要其中一个 topic（哪怕业务重要性很低、只是个日志/审计类的次要 topic）出现
+处理异常触发 rebalance，其它所有被同一个 consumer 订阅的 topic（哪怕是核心
+交易链路的 topic）都会被一起 revoke、经历同样的消费中断。这意味着：
+- 故障排查时容易产生误导——监控到"核心 topic A 出现消费延迟"，但根因可能完全
+  在于"次要 topic B 的消息处理异常"，两者表面上毫无关联；
+- 从架构设计角度看，**为同一个 consumer 订阅"重要性/稳定性差异很大的多个 topic"
+  是一种隐性的可用性风险**，建议按业务重要性/故障隔离边界拆分为不同的
+  consumer（即便共享同一个 `group.id` 也可以做到互不影响，只要用不同的
+  `@KafkaListener` 方法/不同的 consumer 实例分别订阅，详见场景六"如何缓解"）。
+
 ---
 
 ## 缓解建议汇总
@@ -537,8 +741,9 @@ LeaveGroup 请求本身也会给 group coordinator（broker）带来额外负载
 | 阻塞式重试的单次等待时间设置不当 | 场景三 | 重试 backoff 的**单次**最大等待时间必须显著小于 `max.poll.interval.ms`；耗时较长的重试建议改为异步重试（如 Spring Kafka 的 Retry Topic / 非阻塞重试机制），避免占用主消费线程 |
 | 下游服务临时不可用，需要较长时间等待恢复 | 场景四 | 使用 `ExponentialBackOffWithMaxRetries` 并将 `maxInterval` 控制在 `max.poll.interval.ms` 的 1.5～2 倍安全余量以内；可放心地让总重试时长远超过 `max.poll.interval.ms`（只要单次等待不超标） |
 | 忽略了"处理耗时 + 退避等待"需要相加计算 | 场景五 | 设计 `max.poll.interval.ms` 安全余量时，必须用"最坏情况下处理耗时（含抛异常前的耗时）+ 单次退避等待时间"之和来对照阈值，而非只考虑退避时间本身 |
+| 同一 consumer 订阅多个 topic，一个 topic 的问题拖累其它 topic | 场景六 | 按业务重要性/稳定性拆分为不同的 `@KafkaListener`（各自独立订阅、独立 consumer 实例），或将 `partition.assignment.strategy` 显式设置为 `CooperativeStickyAssignor`（且不与仅支持 EAGER 的分配器混用）以启用增量再均衡，减少无关 topic 被牵连的概率 |
 | 消息重复处理 | 全部场景 | 消费逻辑必须幂等；关键业务配合去重表/状态机/唯一约束 |
-| Rebalance 期间消费空窗 | 场景一、二、三 | 监控 consumer lag 与 rebalance 频率指标；评估是否可切换到 `CooperativeStickyAssignor` 等增量再均衡策略以减少"stop-the-world"影响 |
+| Rebalance 期间消费空窗（含跨 topic 的连带影响） | 场景一、二、三、六 | 监控 consumer lag 与 rebalance 频率指标（含"未直接触发异常但同属一个 consumer 订阅"的其它 topic）；评估是否可切换到 `CooperativeStickyAssignor` 等增量再均衡策略以减少"stop-the-world"影响 |
 
 ---
 
@@ -561,8 +766,9 @@ spring-kafka 4.0.4、spring-boot-kafka 4.0.4、spring-core 7.0.6）的源码 /
 | `auto.offset.reset` | **latest** | 是，本项目全部场景显式设为 `earliest` | 便于每次从头消费演示数据，不遗漏消息 |
 | `fetch.max.wait.ms` | 500 ms | 否 | 一次 fetch 请求在数据不足时的最大等待时间，与 `max.poll.interval.ms` 无直接关系 |
 | `request.timeout.ms` | 30,000 ms | 否 | 单次网络请求超时，与消费者组超时机制相互独立 |
-| `retry.backoff.ms` | 100 ms | 否 | 客户端网络请求失败后的重试间隔（Kafka client 层面），与本文讨论的
-  `DefaultErrorHandler` 业务级重试是完全不同的两套机制，不要混淆 |
+| `retry.backoff.ms` | 100 ms | 否 | 客户端网络请求失败后的重试间隔（Kafka client 层面），与本文讨论的 `DefaultErrorHandler` 业务级重试是完全不同的两套机制，不要混淆 |
+| `partition.assignment.strategy` | **`[RangeAssignor, CooperativeStickyAssignor]`** | 否，全部场景保持默认值 | **场景六的决定性配置项**：默认列表中 `RangeAssignor` 只支持 EAGER 协议，取交集后整体协议被锁定为 EAGER，导致"一个 topic 触发 rebalance 会牵连同一 consumer 订阅的所有 topic"；若只保留 `CooperativeStickyAssignor` 可切换为 COOPERATIVE 协议 |
+| `group.protocol` | **`classic`** | 否，全部场景保持默认值 | Kafka 2.8+ 引入的新一代消费者组协议开关（KIP-848），另一个可选值是 `consumer`（架构上完全不同的服务端驱动增量分配协议）；本文档全部实验都基于默认的 `classic` 协议栈 |
 
 ### Spring Kafka 监听容器相关（`org.springframework.kafka.listener.ContainerProperties`）
 
@@ -595,7 +801,7 @@ spring-kafka 4.0.4、spring-boot-kafka 4.0.4、spring-core 7.0.6）的源码 /
 
 ---
 
-## 附：五份原始日志与运行参数对照
+## 附：六份原始日志与运行参数对照
 
 | 文件 | Profile | 关键参数 | 观察到的 rebalance 次数 | 说明 |
 |---|---|---|---|---|
@@ -604,5 +810,6 @@ spring-kafka 4.0.4、spring-boot-kafka 4.0.4、spring-core 7.0.6）的源码 /
 | `docs/scenario3.log` | `scenario3` | `max.poll.records=10`，`max.poll.interval.ms=8000`，`FixedBackOff(9000ms, 3次)` | 6 次 | 2 条"毒消息" × 最多 4 次尝试，每次单独等待即超时；其余 10 条消息正常提交 |
 | `docs/scenario4.log` | `scenario4` | `max.poll.records=1`，`max.poll.interval.ms=6000`，`ExponentialBackOffWithMaxRetries(initial=500ms, multiplier=2, maxInterval=3000ms, maxRetries=8)` | **0 次** | 1 条 flaky 消息前 4 次尝试失败（模拟下游不可用），第 5 次尝试成功（模拟下游恢复）；全程 consumer generation 保持不变，3 条消息全部成功提交 offset |
 | `docs/scenario5.log` | `scenario5` | `max.poll.records=1`，`max.poll.interval.ms=20000`，`FixedBackOff(10000ms, 3次)`，处理耗时固定 4000ms 后抛异常 | 0 次（阈值刻意放宽） | 精确测量退避等待与处理耗时的时间关系：两次"抛异常→下次开始处理"间隔均约 10000ms，证明退避时间**不会**扣除已消耗的处理时间；总间隔（处理+退避）约 14000ms |
+| `docs/scenario6.log` | `scenario6` | `max.poll.records=1`，`max.poll.interval.ms=6000`；同一 consumer 同时订阅 `slow-events` + `other-events` | 15 次 | `slow-events` 单条慢消息触发 rebalance（同场景一机制），`other-events` 完全健康但仍被一起 revoke/重新分配，实测消费中断约 10.4 秒；15 次 revoke 涉及的分区集合完全一致（两个 topic 的全部 6 个分区） |
 
 （日志文件较大，均已完整保留在 `docs/` 目录，关键片段的时间戳可用于交叉核对本报告中的分析。）
